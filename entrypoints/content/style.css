@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Panel base font — set here so rem units from any host page don't affect us.
+ * All sizing inside the panel uses px-based Tailwind tokens.
+ */
+.redline-root {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  color: #111111;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.redline-root *,
+.redline-root *::before,
+.redline-root *::after {
+  box-sizing: border-box;
+}
+
+/* Scrollbar — thin and unobtrusive */
+.redline-root ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.redline-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.redline-root ::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 2px;
+}
+.redline-root ::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+/* Select dropdowns use system UI */
+.redline-root select {
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  appearance: auto;
+}
+
+/* Prevent transition flash when host page has global transitions */
+.redline-root * {
+  transition-property: none !important;
+}
+.redline-root button,
+.redline-root input {
+  transition-property: color, background-color, border-color, box-shadow !important;
+  transition-duration: 80ms !important;
+}
