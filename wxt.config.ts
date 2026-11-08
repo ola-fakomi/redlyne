@@ -1,5 +1,4 @@
 import { defineConfig } from 'wxt';
-import { resolve } from 'path';
 
 export default defineConfig({
   extensionApi: 'chrome',
@@ -19,12 +18,6 @@ export default defineConfig({
       },
     },
   },
+  srcDir: 'src',
   imports: false,
-  vite: () => ({
-    resolve: {
-      alias: {
-        '@': resolve(__dirname, './src'),
-      },
-    },
-  }),
 });

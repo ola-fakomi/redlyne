@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["entrypoints/**/*", "src/**/*", ".wxt/types/**/*"]
+  "include": ["src/**/*", ".wxt/types/**/*"]
 }

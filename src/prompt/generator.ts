@@ -110,7 +110,7 @@ function elHeader(elRec: ElementRecord, num: number): string {
   lines.push(`- Scope: ${scopeLabel}`);
 
   if (elRec.styling.tailwind_classes.length > 0) {
-    lines.push(`- Classes: ${elRec.styling.tailwind_classes.map(sanitize).join(' ')}`);
+    lines.push(`- Classes: ${elRec.styling.tailwind_classes.map(c => sanitize(c)).join(' ')}`);
   }
 
   lines.push(`- CSS path: ${sanitize(elRec.locator.css_path)}`);
