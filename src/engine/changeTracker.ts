@@ -25,6 +25,13 @@ let changeSet: ChangeSet = makeEmptyChangeSet();
 let elementCounter = 0;
 let changeCounter = 0;
 
+interface UndoEntry {
+  elementId: string;
+  changeId: string;
+  property: string;
+}
+const undoStack: UndoEntry[] = [];
+
 function makeEmptyChangeSet(): ChangeSet {
   const env = detectFramework();
   return {
@@ -111,6 +118,7 @@ export function recordChange(
     existing.after = { value: newValue, computed: newValue, token: null };
     existing.description = description;
     existing.copied = false;
+    undoStack.push({ elementId: elRec.element_id, changeId: existing.change_id, property });
   } else {
     const authored = readAuthored(el, property);
     const id = `ch_${++changeCounter}`;
@@ -127,7 +135,13 @@ export function recordChange(
       description,
     };
     elRec.changes.push(change);
+    undoStack.push({ elementId: elRec.element_id, changeId: id, property });
   }
+}
+
+/** Pop the last user action off the undo stack. */
+export function popUndo(): { elementId: string; changeId: string; property: string } | null {
+  return undoStack.pop() ?? null;
 }
 
 /** Revert a single change (remove record and re-read the original value). */
@@ -138,11 +152,17 @@ export function revertChange(elementId: string, changeId: string): void {
   if (elRec.changes.length === 0) {
     changeSet.elements = changeSet.elements.filter(e => e.element_id !== elementId);
   }
+  for (let i = undoStack.length - 1; i >= 0; i--) {
+    if (undoStack[i].changeId === changeId) undoStack.splice(i, 1);
+  }
 }
 
 /** Revert all changes for an element. */
 export function revertElement(elementId: string): void {
   changeSet.elements = changeSet.elements.filter(e => e.element_id !== elementId);
+  for (let i = undoStack.length - 1; i >= 0; i--) {
+    if (undoStack[i].elementId === elementId) undoStack.splice(i, 1);
+  }
 }
 
 /** Revert everything. */
@@ -150,6 +170,7 @@ export function revertAll(): void {
   changeSet = makeEmptyChangeSet();
   elementCounter = 0;
   changeCounter = 0;
+  undoStack.length = 0;
 }
 
 /** Mark all changes as copied. */

@@ -1,6 +1,7 @@
 import React from 'react';
-import { NumericField } from '../controls/NumericField';
 import { ColorField } from '../controls/ColorField';
+import { NumericField } from '../controls/NumericField';
+import { cn } from '@/lib/utils';
 
 interface Props {
   get: (prop: string) => string;
@@ -16,24 +17,28 @@ export function StrokeSection({ get, getOrig, set }: Props) {
   const style = get('border-style');
 
   return (
-    <div className="p-2 space-y-1.5">
+    <div className="px-3 pb-3 pt-1 space-y-1">
+      {/* Color row */}
       <ColorField
-        label="Stroke"
         value={color}
         original={getOrig('border-color')}
         onChange={v => set('border-color', v, 'Change border color')}
       />
+
+      {/* Width + style */}
       <div className="flex items-center gap-1">
-        <NumericField
-          label="W"
-          value={width}
-          original={getOrig('border-width')}
-          onChange={v => set('border-width', v, 'Change border width')}
-        />
+        <div className="w-[72px] shrink-0">
+          <NumericField
+            label="W"
+            value={width}
+            original={getOrig('border-width')}
+            onChange={v => set('border-width', v, 'Change border width')}
+          />
+        </div>
         <select
           value={style}
           onChange={e => set('border-style', e.target.value, 'Change border style')}
-          className="h-[22px] flex-1 rounded border border-panel-border bg-white text-panel-sm font-panel text-panel-text-primary px-1 focus:outline-none focus:ring-1 focus:ring-panel-blue"
+          className="flex-1 h-7 rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary px-1.5 focus:outline-none focus:ring-1 focus:ring-panel-blue"
         >
           {STYLES.map(s => (
             <option key={s} value={s}>{s}</option>

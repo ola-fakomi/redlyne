@@ -1,10 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #f8fafc;
+  background: #888;
+}
+
+/* ── Redline panel CSS variables ── */
+.redline-root {
+  --panel-outer-bg:       #3c3c3c;
+  --panel-bg:             #2c2c2c;
+  --panel-border:         #4f4f4f;
+  --panel-text-primary:   #e5e5e5;
+  --panel-text-secondary: #aaaaaa;
+  --panel-text-label:     #8a8a8a;
+  --panel-header-bg:      #252525;
+  --panel-input-bg:       #3c3c3c;
+  --panel-section-bg:     #2c2c2c;
+  --panel-row-hover:      #454545;
+  --panel-changed-bg:     rgba(13,153,255,0.18);
+  --panel-revert-hover:   rgba(239,68,68,0.12);
+  --panel-accent:         #0d99ff;
+  --panel-accent-overlay: rgba(13,153,255,0.15);
+
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--panel-text-primary);
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.redline-root.light {
+  --panel-outer-bg:       #ebebeb;
+  --panel-bg:             #ffffff;
+  --panel-border:         #d4d4d4;
+  --panel-text-primary:   #111111;
+  --panel-text-secondary: #5e5e5e;
+  --panel-text-label:     #8a8a8a;
+  --panel-header-bg:      #f7f7f7;
+  --panel-input-bg:       #f0f0f0;
+  --panel-section-bg:     #fafafa;
+  --panel-row-hover:      #e8e8e8;
+  --panel-changed-bg:     #ffced0;
+  --panel-revert-hover:   #fee2e2;
+  --panel-accent:         #6a0004;
+  --panel-accent-overlay: rgba(106,0,4,0.08);
+}
+
+.redline-root *, .redline-root *::before, .redline-root *::after {
+  box-sizing: border-box;
+}
+
+.redline-root ::-webkit-scrollbar       { width: 4px; height: 4px; }
+.redline-root ::-webkit-scrollbar-track { background: transparent; }
+.redline-root ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+.redline-root ::-webkit-scrollbar-thumb:hover { background: var(--panel-text-label); }
+
+.redline-root select {
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  appearance: auto;
+  background-color: var(--panel-input-bg);
+  color: var(--panel-text-primary);
+}
+
+.redline-root * { transition-property: none !important; }
+.redline-root button, .redline-root input {
+  transition-property: color, background-color, border-color, box-shadow !important;
+  transition-duration: 80ms !important;
 }

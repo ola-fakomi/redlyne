@@ -8,22 +8,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Redline panel design tokens — px-based, host-page agnostic
+        // Redline panel design tokens — Figma-dark, px-based, host-page agnostic
         panel: {
-          bg: '#ffffff',
-          border: '#e3e3e3',
-          'text-primary': '#111111',
-          'text-secondary': '#5e5e5e',
-          'text-label': '#8a8a8a',
-          blue: '#0d99ff',
-          'header-bg': '#f7f7f7',
-          'section-bg': '#fafafa',
-          'row-hover': '#f3f3f3',
-          'changed-dot': '#0d99ff',
-          'changed-bg': '#eff6ff',
-          'revert-hover': '#fee2e2',
-          overlay: 'rgba(13,153,255,0.15)',
-          'overlay-stroke': '#0d99ff',
+          bg:              'var(--panel-bg)',
+          outer:           'var(--panel-outer-bg)',
+          border:          'var(--panel-border)',
+          'text-primary':  'var(--panel-text-primary)',
+          'text-secondary':'var(--panel-text-secondary)',
+          'text-label':    'var(--panel-text-label)',
+          blue:            'var(--panel-accent)',
+          'header-bg':     'var(--panel-header-bg)',
+          'input-bg':      'var(--panel-input-bg)',
+          'section-bg':    'var(--panel-section-bg)',
+          'row-hover':     'var(--panel-row-hover)',
+          'changed-dot':   'var(--panel-accent)',
+          'changed-bg':    'var(--panel-changed-bg)',
+          'revert-hover':  'var(--panel-revert-hover)',
+          overlay:         'var(--panel-accent-overlay)',
+          'overlay-stroke':'var(--panel-accent)',
         },
       },
       fontSize: {
@@ -43,7 +45,7 @@ export default {
         'panel': '8px',
       },
       fontFamily: {
-        'panel': ['-apple-system', 'BlinkMacSystemFont', '"Inter"', '"Segoe UI"', 'sans-serif'],
+        'panel': ['"Geist"', '-apple-system', 'BlinkMacSystemFont', '"Inter"', '"Segoe UI"', 'sans-serif'],
       },
     },
   },

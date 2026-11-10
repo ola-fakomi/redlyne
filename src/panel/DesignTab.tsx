@@ -1,30 +1,26 @@
 /**
- * Design tab — shows property sections for the selected element.
- * Each section reads live computed values and writes previews.
+ * Design tab — Figma-style property sections.
+ * Section order: Position · Layout · Auto layout · Appearance · Typography · Fill · Stroke · Effects · Export
  */
 
 import React, { useState } from 'react';
-import { readComputed } from '@/engine/styleReader';
 import { applyPreview } from '@/engine/overlay';
 import { recordChange } from '@/engine/changeTracker';
 import { describeChange } from '@/prompt/generator';
 import { AutoLayoutSection } from './sections/AutoLayoutSection';
 import { SizeSection } from './sections/SizeSection';
-import { SpacingSection } from './sections/SpacingSection';
 import { FillSection } from './sections/FillSection';
 import { TypographySection } from './sections/TypographySection';
-import { RadiusSection } from './sections/RadiusSection';
 import { StrokeSection } from './sections/StrokeSection';
-import { readLabel, buildCssPath } from '@/engine/styleReader';
+import { NumericField } from './controls/NumericField';
+import { readLabel } from '@/engine/styleReader';
 
 interface Props {
   el: Element;
-  onChangeRecorded: () => void;  // triggers panel re-render
+  onChangeRecorded: () => void;
 }
 
-/** Helpers that read live computed values (after previews are applied). */
 function makeAccessors(el: Element) {
-  // Cache for the before values (read before any change this session)
   const origCache: Record<string, string> = {};
 
   function get(prop: string): string {
@@ -36,10 +32,7 @@ function makeAccessors(el: Element) {
   }
 
   function set(prop: string, val: string, desc: string) {
-    // Stash original before first change
-    if (!origCache[prop]) {
-      origCache[prop] = get(prop);
-    }
+    if (!origCache[prop]) origCache[prop] = get(prop);
     applyPreview(el, prop, val);
     recordChange(el, prop, val, desc || describeChange(prop, origCache[prop] ?? '', val));
   }
@@ -47,79 +40,183 @@ function makeAccessors(el: Element) {
   return { get, getOrig, set };
 }
 
-function SectionHeader({ title }: { title: string }) {
+/** Figma-style section header with + button on the right */
+function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) {
   return (
-    <div className="flex items-center px-2 h-[26px] border-b border-panel-border bg-panel-header-bg">
-      <span className="text-panel-xs font-panel font-semibold text-panel-text-label uppercase tracking-wide">
-        {title}
-      </span>
+    <div className="flex items-center justify-between px-3 h-10 border-t border-panel-border shrink-0">
+      <span className="text-[13px] font-semibold text-panel-text-primary">{title}</span>
+      {onAdd !== undefined && (
+        <button
+          onClick={onAdd}
+          className="flex items-center justify-center w-5 h-5 rounded text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Collapsed section — header only, no content */
+function CollapsedSection({ title }: { title: string }) {
+  return (
+    <div className="flex items-center justify-between px-3 h-10 border-t border-panel-border shrink-0">
+      <span className="text-[13px] font-semibold text-panel-text-primary">{title}</span>
+      <button className="flex items-center justify-center w-5 h-5 rounded text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
     </div>
   );
 }
 
 export function DesignTab({ el, onChangeRecorded }: Props) {
-  // Increment on each change to force re-render so sections read updated computed values
   const [, setVersion] = useState(0);
-
-  // Create accessors once per element; origCache persists across re-renders for the same el
   const { get, getOrig, set: rawSet } = React.useMemo(() => makeAccessors(el), [el]);
 
   function set(prop: string, val: string, desc: string) {
     rawSet(prop, val, desc);
-    setVersion(v => v + 1);  // triggers re-render → sections call get() again
+    setVersion(v => v + 1);
     onChangeRecorded();
   }
 
-  const display = get('display');
-  const isFlex = display === 'flex' || display === 'inline-flex';
-  const tag = el.tagName.toLowerCase();
+  const display  = get('display');
+  const isFlex   = display === 'flex' || display === 'inline-flex';
+  const tag      = el.tagName.toLowerCase();
   const isTextEl = ['p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'li', 'label', 'button'].includes(tag)
     || (el.childElementCount === 0 && (el.textContent?.trim().length ?? 0) > 0);
 
   const label = readLabel(el);
-  const path = buildCssPath(el);
+
+  // Position (read-only)
+  const rect = el.getBoundingClientRect();
+  const elX  = Math.round(rect.left + window.scrollX);
+  const elY  = Math.round(rect.top  + window.scrollY);
+
+  // Opacity
+  const opacity    = get('opacity');
+  const opacityPct = Math.round(parseFloat(opacity || '1') * 100);
+
+  // Corner radius
+  const tl = get('border-top-left-radius');
+  const tr = get('border-top-right-radius');
+  const br = get('border-bottom-right-radius');
+  const bl = get('border-bottom-left-radius');
+  const radiusAllSame = tl === tr && tr === br && br === bl;
+
+  function setAllRadius(v: string) {
+    set('border-top-left-radius',     v, 'Change corner radius');
+    set('border-top-right-radius',    v, 'Change corner radius');
+    set('border-bottom-right-radius', v, 'Change corner radius');
+    set('border-bottom-left-radius',  v, 'Change corner radius');
+  }
 
   const sectionProps = { el, get, getOrig, set };
 
   return (
-    <div className="flex flex-col text-panel-sm font-panel">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1 px-2 h-[26px] border-b border-panel-border text-panel-xs text-panel-text-secondary truncate">
-        <span className="text-panel-text-label">&lt;{tag}&gt;</span>
+    <div className="flex flex-col text-[11px] font-panel">
+
+      {/* Element label row */}
+      <div className="flex items-center gap-1.5 px-3 h-7 border-b border-panel-border text-[10px] text-panel-text-secondary truncate shrink-0">
+        <span className="text-panel-text-label font-semibold">&lt;{tag}&gt;</span>
         <span className="truncate">{label}</span>
       </div>
 
-      {/* Auto Layout / Padding */}
-      <SectionHeader title="Auto Layout" />
-      <AutoLayoutSection {...sectionProps} />
+      {/* ── Position ───────────────────────── */}
+      <SectionHeader title="Position" />
+      <div className="px-3 pb-2 pt-0.5">
+        <div className="grid grid-cols-2 gap-1">
+          <NumericField label="X" value={`${elX}px`} disabled onChange={() => {}} />
+          <NumericField label="Y" value={`${elY}px`} disabled onChange={() => {}} />
+        </div>
+      </div>
 
-      {/* Size */}
-      <SectionHeader title="Size" />
+      {/* ── Layout (W / H) ─────────────────── */}
+      <SectionHeader title="Layout" />
       <SizeSection {...sectionProps} />
 
-      {/* Spacing */}
-      <SectionHeader title="Spacing" />
-      <SpacingSection {...sectionProps} />
-
-      {/* Fill */}
-      <SectionHeader title="Fill" />
-      <FillSection {...sectionProps} />
-
-      {/* Typography — only for text elements */}
-      {isTextEl && (
+      {/* ── Auto layout (flex only) ─────────── */}
+      {isFlex && (
         <>
-          <SectionHeader title="Typography" />
-          <TypographySection {...sectionProps} />
+          <SectionHeader title="Auto layout" />
+          <AutoLayoutSection {...sectionProps} />
         </>
       )}
 
-      {/* Corner Radius */}
-      <SectionHeader title="Corner radius" />
-      <RadiusSection {...sectionProps} />
+      {/* ── Appearance ─────────────────────── */}
+      <SectionHeader title="Appearance" />
+      <div className="px-3 pb-2 pt-1 space-y-1.5">
+        {/* Opacity */}
+        <div className="space-y-0.5">
+          <span className="text-[10px] text-panel-text-label block">Opacity</span>
+          <div className="relative flex-1">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-panel-text-label select-none pointer-events-none z-10">%</span>
+            <input
+              key={opacityPct}
+              type="text"
+              defaultValue={opacityPct}
+              onBlur={e => {
+                const pct = parseFloat(e.target.value);
+                if (!isNaN(pct)) set('opacity', String(Math.min(1, Math.max(0, pct / 100))), pct < opacityPct ? 'Reduce opacity' : 'Increase opacity');
+              }}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+              className="w-full h-7 pl-5 pr-1.5 rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary text-right focus:outline-none focus:ring-1 focus:ring-panel-blue"
+            />
+          </div>
+        </div>
 
-      {/* Stroke */}
-      <SectionHeader title="Stroke" />
-      <StrokeSection {...sectionProps} />
+        {/* Corner radius */}
+        <div className="space-y-0.5">
+          <span className="text-[10px] text-panel-text-label block">Corner radius</span>
+          {radiusAllSame ? (
+            <NumericField
+              label="◯"
+              value={tl}
+              original={getOrig('border-top-left-radius')}
+              onChange={setAllRadius}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-1">
+              <NumericField label="TL" value={tl} original={getOrig('border-top-left-radius')}
+                onChange={v => set('border-top-left-radius',    v, 'Change top-left radius')} />
+              <NumericField label="TR" value={tr} original={getOrig('border-top-right-radius')}
+                onChange={v => set('border-top-right-radius',   v, 'Change top-right radius')} />
+              <NumericField label="BR" value={br} original={getOrig('border-bottom-right-radius')}
+                onChange={v => set('border-bottom-right-radius',v, 'Change bottom-right radius')} />
+              <NumericField label="BL" value={bl} original={getOrig('border-bottom-left-radius')}
+                onChange={v => set('border-bottom-left-radius', v, 'Change bottom-left radius')} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Typography ─────────────────────── */}
+      {isTextEl && (
+        <>
+          <SectionHeader title="Typography" />
+          <TypographySection get={get} getOrig={getOrig} set={set} />
+        </>
+      )}
+
+      {/* ── Fill ───────────────────────────── */}
+      <SectionHeader title="Fill" onAdd={() => {}} />
+      <FillSection {...sectionProps} />
+
+      {/* ── Stroke ─────────────────────────── */}
+      <SectionHeader title="Stroke" onAdd={() => {}} />
+      <StrokeSection get={get} getOrig={getOrig} set={set} />
+
+      {/* ── Effects (collapsed) ────────────── */}
+      <CollapsedSection title="Effects" />
+
+      {/* ── Export (collapsed) ─────────────── */}
+      <CollapsedSection title="Export" />
+
     </div>
   );
 }

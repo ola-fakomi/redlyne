@@ -71,8 +71,5 @@ export default defineContentScript({
         mountPanel();
       }
     }
-
-    // Auto-mount so panel is available immediately on extension load
-    await mountPanel();
   },
 });

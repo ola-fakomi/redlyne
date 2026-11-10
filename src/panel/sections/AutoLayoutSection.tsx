@@ -9,125 +9,126 @@ interface Props {
   set: (prop: string, val: string, desc: string) => void;
 }
 
-const DIRECTIONS = [
-  { label: 'None', value: 'block', icon: '—' },
-  { label: 'Horizontal', value: 'row', icon: '→' },
-  { label: 'Vertical', value: 'column', icon: '↓' },
+// 9-cell alignment grid: [justify-content, align-items]
+const ALIGN_CELLS: { jc: string; ai: string }[] = [
+  { jc: 'flex-start', ai: 'flex-start' },
+  { jc: 'center',     ai: 'flex-start' },
+  { jc: 'flex-end',   ai: 'flex-start' },
+  { jc: 'flex-start', ai: 'center'     },
+  { jc: 'center',     ai: 'center'     },
+  { jc: 'flex-end',   ai: 'center'     },
+  { jc: 'flex-start', ai: 'flex-end'   },
+  { jc: 'center',     ai: 'flex-end'   },
+  { jc: 'flex-end',   ai: 'flex-end'   },
 ];
 
-const ALIGN_GRID: { jc: string; ai: string; label: string }[] = [
-  { jc: 'flex-start', ai: 'flex-start', label: '↖' },
-  { jc: 'center',     ai: 'flex-start', label: '↑' },
-  { jc: 'flex-end',   ai: 'flex-start', label: '↗' },
-  { jc: 'flex-start', ai: 'center',     label: '←' },
-  { jc: 'center',     ai: 'center',     label: '·' },
-  { jc: 'flex-end',   ai: 'center',     label: '→' },
-  { jc: 'flex-start', ai: 'flex-end',   label: '↙' },
-  { jc: 'center',     ai: 'flex-end',   label: '↓' },
-  { jc: 'flex-end',   ai: 'flex-end',   label: '↘' },
+// Direction icons (SVG-ish unicode stand-ins)
+const DIR_BUTTONS = [
+  { value: 'row',    title: 'Horizontal',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="4" width="2" height="4" rx="0.5" fill="currentColor"/>
+        <rect x="5" y="2" width="2" height="8" rx="0.5" fill="currentColor"/>
+        <rect x="9" y="4" width="2" height="4" rx="0.5" fill="currentColor"/>
+      </svg>
+    ),
+  },
+  { value: 'column', title: 'Vertical',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="4" y="1" width="4" height="2" rx="0.5" fill="currentColor"/>
+        <rect x="2" y="5" width="8" height="2" rx="0.5" fill="currentColor"/>
+        <rect x="4" y="9" width="4" height="2" rx="0.5" fill="currentColor"/>
+      </svg>
+    ),
+  },
 ];
 
 export function AutoLayoutSection({ el, get, getOrig, set }: Props) {
-  const display = get('display');
-  const isFlex = display === 'flex' || display === 'inline-flex';
   const flexDir = get('flex-direction');
-  const isRow = !flexDir.includes('column');
+  const isRow   = !flexDir.includes('column');
+  const jc      = get('justify-content');
+  const ai      = get('align-items');
+  const gap     = get('gap') || get('row-gap') || '0px';
+  const padT    = get('padding-top');
+  const padR    = get('padding-right');
+  const padB    = get('padding-bottom');
+  const padL    = get('padding-left');
 
-  const currentDir = !isFlex ? 'block' : isRow ? 'row' : 'column';
-  const jc = get('justify-content');
-  const ai = get('align-items');
-  const gap = get('gap') || get('row-gap') || '0px';
-
-  const padT = get('padding-top');
-  const padR = get('padding-right');
-  const padB = get('padding-bottom');
-  const padL = get('padding-left');
-
-  function setDirection(dir: string) {
-    if (dir === 'block') {
-      set('display', 'block', 'Remove auto layout');
-    } else {
-      set('display', 'flex', dir === 'row' ? 'Arrange children horizontally' : 'Arrange children vertically');
-      set('flex-direction', dir, dir === 'row' ? 'Arrange children horizontally' : 'Arrange children vertically');
-    }
-  }
-
-  function setAlign(jcVal: string, aiVal: string) {
-    set('justify-content', jcVal, `Align children to ${jcVal}`);
-    set('align-items', aiVal, `Align children to ${aiVal}`);
-  }
+  const currentDir = isRow ? 'row' : 'column';
 
   return (
-    <div className="p-2 space-y-1.5">
-      {/* Direction */}
-      <div className="flex items-center gap-1">
-        <span className="text-panel-xs text-panel-text-label w-[40px] shrink-0">Layout</span>
-        <div className="flex gap-0.5">
-          {DIRECTIONS.map(d => (
-            <button
-              key={d.value}
-              title={d.label}
-              onClick={() => setDirection(d.value)}
-              className={cn(
-                'h-[22px] w-[22px] rounded text-panel-sm font-panel border transition-colors',
-                currentDir === d.value
-                  ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
-                  : 'border-panel-border bg-white text-panel-text-secondary hover:bg-panel-row-hover',
-              )}
-            >
-              {d.icon}
-            </button>
-          ))}
+    <div className="px-3 pb-3 pt-1 space-y-2">
+      {/* Direction + alignment grid in one row */}
+      <div className="flex items-start gap-2">
+        {/* Direction + gap stacked */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-1">
+            {DIR_BUTTONS.map(d => (
+              <button
+                key={d.value}
+                title={d.title}
+                onClick={() => {
+                  set('flex-direction', d.value, d.value === 'row' ? 'Arrange children horizontally' : 'Arrange children vertically');
+                }}
+                className={cn(
+                  'flex items-center justify-center w-7 h-7 rounded-md border transition-colors',
+                  currentDir === d.value
+                    ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                    : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                )}
+              >
+                {d.icon}
+              </button>
+            ))}
+          </div>
+          {/* Gap */}
+          <NumericField
+            label="Gap"
+            value={gap}
+            original={getOrig('gap')}
+            onChange={v => set('gap', v, parseFloat(v) > parseFloat(gap) ? 'Increase space between items' : 'Reduce space between items')}
+          />
+        </div>
+
+        {/* 3×3 alignment grid */}
+        <div className="grid grid-cols-3 gap-px border border-panel-border rounded-md bg-panel-border w-[66px] h-[66px] shrink-0 overflow-hidden">
+          {ALIGN_CELLS.map((cell, i) => {
+            const active = cell.jc === jc && cell.ai === ai;
+            return (
+              <button
+                key={i}
+                title={`justify: ${cell.jc}, align: ${cell.ai}`}
+                onClick={() => {
+                  set('justify-content', cell.jc, `Align children`);
+                  set('align-items', cell.ai, `Align children`);
+                }}
+                className={cn(
+                  'flex items-center justify-center',
+                  active
+                    ? 'bg-panel-blue'
+                    : 'bg-panel-input-bg hover:bg-panel-row-hover',
+                )}
+              >
+                {active && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Alignment grid — only shown when flex */}
-      {isFlex && (
-        <div className="flex items-start gap-1">
-          <span className="text-panel-xs text-panel-text-label w-[40px] shrink-0 mt-0.5">Align</span>
-          <div className="grid grid-cols-3 gap-px border border-panel-border rounded bg-panel-border w-[66px] h-[66px]">
-            {ALIGN_GRID.map((cell, i) => {
-              const active = cell.jc === jc && cell.ai === ai;
-              return (
-                <button
-                  key={i}
-                  title={`justify: ${cell.jc}, align: ${cell.ai}`}
-                  onClick={() => setAlign(cell.jc, cell.ai)}
-                  className={cn(
-                    'flex items-center justify-center text-[9px] transition-colors',
-                    active ? 'bg-panel-blue text-white' : 'bg-white hover:bg-panel-row-hover text-panel-text-label',
-                  )}
-                >
-                  {cell.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Gap */}
-      {isFlex && (
-        <NumericField
-          label="Gap"
-          value={gap}
-          original={getOrig('gap')}
-          onChange={v => set('gap', v, parseFloat(v) > parseFloat(gap) ? 'Increase space between child items' : 'Reduce space between child items')}
-        />
-      )}
-
-      {/* Padding */}
-      <div className="space-y-0.5">
-        <span className="text-panel-xs text-panel-text-label block">Padding</span>
+      {/* Padding — 2×2 grid */}
+      <div className="space-y-1">
+        <span className="text-[10px] text-panel-text-label block">Padding</span>
         <div className="grid grid-cols-2 gap-1">
           <NumericField label="T" value={padT} original={getOrig('padding-top')}
-            onChange={v => set('padding-top', v, parseFloat(v) > parseFloat(padT) ? 'Increase inner padding on the top' : 'Reduce inner padding on the top')} />
+            onChange={v => set('padding-top', v, 'Change top padding')} />
           <NumericField label="R" value={padR} original={getOrig('padding-right')}
-            onChange={v => set('padding-right', v, parseFloat(v) > parseFloat(padR) ? 'Increase inner padding on the right' : 'Reduce inner padding on the right')} />
+            onChange={v => set('padding-right', v, 'Change right padding')} />
           <NumericField label="B" value={padB} original={getOrig('padding-bottom')}
-            onChange={v => set('padding-bottom', v, parseFloat(v) > parseFloat(padB) ? 'Increase inner padding on the bottom' : 'Reduce inner padding on the bottom')} />
+            onChange={v => set('padding-bottom', v, 'Change bottom padding')} />
           <NumericField label="L" value={padL} original={getOrig('padding-left')}
-            onChange={v => set('padding-left', v, parseFloat(v) > parseFloat(padL) ? 'Increase inner padding on the left' : 'Reduce inner padding on the left')} />
+            onChange={v => set('padding-left', v, 'Change left padding')} />
         </div>
       </div>
     </div>

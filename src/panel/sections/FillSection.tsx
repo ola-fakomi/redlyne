@@ -8,25 +8,22 @@ interface Props {
   set: (prop: string, val: string, desc: string) => void;
 }
 
+const TEXT_TAGS = new Set(['P','SPAN','H1','H2','H3','H4','H5','H6','A','BUTTON','LABEL','LI']);
+
 export function FillSection({ el, get, getOrig, set }: Props) {
-  const isText = el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE;
-  const bg = get('background-color');
+  const isTextEl = TEXT_TAGS.has(el.tagName) || (el.childElementCount === 0 && (el.textContent?.trim().length ?? 0) > 0);
+  const bg    = get('background-color');
   const color = get('color');
 
   return (
-    <div className="p-2 space-y-1.5">
+    <div className="px-3 pb-3 pt-1 space-y-1">
       <ColorField
-        label="Fill"
         value={bg}
         original={getOrig('background-color')}
         onChange={v => set('background-color', v, 'Change background color')}
       />
-      {(isText || el.tagName === 'P' || el.tagName === 'SPAN' || el.tagName === 'H1' ||
-        el.tagName === 'H2' || el.tagName === 'H3' || el.tagName === 'H4' ||
-        el.tagName === 'H5' || el.tagName === 'H6' || el.tagName === 'A' ||
-        el.tagName === 'BUTTON' || el.tagName === 'LABEL') && (
+      {isTextEl && (
         <ColorField
-          label="Color"
           value={color}
           original={getOrig('color')}
           onChange={v => set('color', v, 'Change text color')}

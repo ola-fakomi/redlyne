@@ -20,10 +20,10 @@ export function PricingCard({
   return (
     <div
       className={`
-        flex flex-col gap-4 rounded-xl p-6
+        flex flex-col p-6
         ${highlighted
-          ? 'bg-blue-600 text-white shadow-xl ring-2 ring-blue-400'
-          : 'bg-white text-gray-900 shadow-md'}
+          ? 'gap-[40px] rounded-3xl bg-[#23304d] text-white shadow-xl ring-2 ring-blue-400 border-[3px]'
+          : 'gap-4 rounded-xl bg-white text-gray-900 shadow-md'}
       `}
     >
       <div className="flex flex-col gap-1">
