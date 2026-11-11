@@ -4,16 +4,24 @@
  */
 
 import React, { useState } from 'react';
+import {
+  AddLinearIcon,
+  AlignLeftLinearIcon, AlignHorizontalCenterLinearIcon, AlignRightLinearIcon,
+  AlignTopLinearIcon, AlignVerticalCenterLinearIcon, AlignBottomLinearIcon,
+  RefreshLinearIcon, FlipHorizontalLinearIcon, FlipVerticalLinearIcon,
+} from '@solar-icons/react';
 import { applyPreview } from '@/engine/overlay';
 import { recordChange } from '@/engine/changeTracker';
 import { describeChange } from '@/prompt/generator';
 import { AutoLayoutSection } from './sections/AutoLayoutSection';
+import { EffectsSection } from './sections/EffectsSection';
 import { SizeSection } from './sections/SizeSection';
 import { FillSection } from './sections/FillSection';
 import { TypographySection } from './sections/TypographySection';
 import { StrokeSection } from './sections/StrokeSection';
 import { NumericField } from './controls/NumericField';
 import { readLabel } from '@/engine/styleReader';
+import { cn } from '@/lib/utils';
 
 interface Props {
   el: Element;
@@ -66,17 +74,37 @@ function CollapsedSection({ title }: { title: string }) {
     <div className="flex items-center justify-between px-3 h-10 border-t border-panel-border shrink-0">
       <span className="text-[13px] font-semibold text-panel-text-primary">{title}</span>
       <button className="flex items-center justify-center w-5 h-5 rounded text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
+        <AddLinearIcon size={10} />
       </button>
     </div>
   );
 }
 
+// ── Corner radius SVG icons ───────────────────────────────────────────────────
+const CornerTLIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-panel-text-label">
+    <path d="M8 2H5a3 3 0 00-3 3v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const CornerTRIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-panel-text-label">
+    <path d="M2 2h3a3 3 0 013 3v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const CornerBLIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-panel-text-label">
+    <path d="M8 8H5a3 3 0 01-3-3V2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const CornerBRIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-panel-text-label">
+    <path d="M2 8h3a3 3 0 003-3V2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+
 export function DesignTab({ el, onChangeRecorded }: Props) {
   const [, setVersion] = useState(0);
+  const [cornerExpanded, setCornerExpanded] = useState(false);
   const { get, getOrig, set: rawSet } = React.useMemo(() => makeAccessors(el), [el]);
 
   function set(prop: string, val: string, desc: string) {
@@ -97,6 +125,16 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
   const rect = el.getBoundingClientRect();
   const elX  = Math.round(rect.left + window.scrollX);
   const elY  = Math.round(rect.top  + window.scrollY);
+
+  // Rotation — parse matrix() from computed transform
+  const elTransform = get('transform');
+  const elRotation = (() => {
+    if (!elTransform || elTransform === 'none') return 0;
+    const mat = elTransform.match(/matrix\(([^)]+)\)/);
+    if (!mat) return 0;
+    const [a, b] = mat[1].split(',').map(parseFloat);
+    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+  })();
 
   // Opacity
   const opacity    = get('opacity');
@@ -129,33 +167,109 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
 
       {/* ── Position ───────────────────────── */}
       <SectionHeader title="Position" />
-      <div className="px-3 pb-2 pt-0.5">
-        <div className="grid grid-cols-2 gap-1">
-          <NumericField label="X" value={`${elX}px`} disabled onChange={() => {}} />
-          <NumericField label="Y" value={`${elY}px`} disabled onChange={() => {}} />
+      <div className="px-3 pb-2 pt-1 space-y-2">
+
+        {/* Alignment */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-panel-text-label block">Alignment</span>
+          <div className="flex gap-0.5">
+            {([
+              { icon: <AlignLeftLinearIcon size={12} />,           title: 'Align left',        prop: 'justify-self', val: 'start'  },
+              { icon: <AlignHorizontalCenterLinearIcon size={12} />, title: 'Center horizontal', prop: 'justify-self', val: 'center' },
+              { icon: <AlignRightLinearIcon size={12} />,          title: 'Align right',       prop: 'justify-self', val: 'end'    },
+              { icon: <AlignTopLinearIcon size={12} />,            title: 'Align top',         prop: 'align-self',   val: 'start'  },
+              { icon: <AlignVerticalCenterLinearIcon size={12} />, title: 'Center vertical',   prop: 'align-self',   val: 'center' },
+              { icon: <AlignBottomLinearIcon size={12} />,         title: 'Align bottom',      prop: 'align-self',   val: 'end'    },
+            ] as const).map((btn, i) => {
+              const cur = get(btn.prop);
+              const active = cur === btn.val || (btn.val === 'start' && (cur === 'flex-start' || cur === 'self-start'));
+              return (
+                <button
+                  key={i}
+                  title={btn.title}
+                  onClick={() => set(btn.prop, btn.val, btn.title)}
+                  className={cn(
+                    'flex items-center justify-center flex-1 h-[22px] rounded-md border transition-colors',
+                    active
+                      ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                      : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                  )}
+                >
+                  {btn.icon}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Position X/Y */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-panel-text-label block">Position</span>
+          <div className="grid grid-cols-2 gap-1">
+            <NumericField label="X" value={`${elX}px`} disabled onChange={() => {}} />
+            <NumericField label="Y" value={`${elY}px`} disabled onChange={() => {}} />
+          </div>
+        </div>
+
+        {/* Rotation */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-panel-text-label block">Rotation</span>
+          <div className="flex items-center gap-1">
+            <div className="flex-1">
+              <NumericField
+                label="⤾"
+                value={`${elRotation}deg`}
+                original={getOrig('transform')}
+                onChange={v => set('transform', `rotate(${parseFloat(v) || 0}deg)`, 'Rotate element')}
+              />
+            </div>
+            <button title="Reset rotation" onClick={() => set('transform', 'none', 'Reset rotation')}
+              className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0">
+              <RefreshLinearIcon size={12} />
+            </button>
+            <button title="Flip horizontal" onClick={() => set('transform', `${elTransform !== 'none' ? elTransform + ' ' : ''}scaleX(-1)`, 'Flip horizontal')}
+              className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0">
+              <FlipHorizontalLinearIcon size={12} />
+            </button>
+            <button title="Flip vertical" onClick={() => set('transform', `${elTransform !== 'none' ? elTransform + ' ' : ''}scaleY(-1)`, 'Flip vertical')}
+              className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0">
+              <FlipVerticalLinearIcon size={12} />
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      {/* ── Layout (W / H) ─────────────────── */}
+      {/* ── Layout ──────────────────────────── */}
       <SectionHeader title="Layout" />
-      <SizeSection {...sectionProps} />
-
-      {/* ── Auto layout (flex only) ─────────── */}
-      {isFlex && (
-        <>
-          <SectionHeader title="Auto layout" />
-          <AutoLayoutSection {...sectionProps} />
-        </>
+      {isFlex ? (
+        <AutoLayoutSection {...sectionProps} />
+      ) : (
+        <SizeSection {...sectionProps} />
       )}
 
       {/* ── Appearance ─────────────────────── */}
       <SectionHeader title="Appearance" />
-      <div className="px-3 pb-2 pt-1 space-y-1.5">
-        {/* Opacity */}
-        <div className="space-y-0.5">
-          <span className="text-[10px] text-panel-text-label block">Opacity</span>
-          <div className="relative flex-1">
-            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-panel-text-label select-none pointer-events-none z-10">%</span>
+      <div className="px-3 pb-2 pt-1 space-y-2">
+
+        {/* Labels row */}
+        <div className="grid grid-cols-2 gap-1 pr-6">
+          <span className="text-[10px] text-panel-text-label">Opacity</span>
+          <span className="text-[10px] text-panel-text-label">Corner radius</span>
+        </div>
+
+        {/* Fields row: [Opacity] [Corner radius] [expand toggle] */}
+        <div className="flex items-center gap-1">
+
+          {/* Opacity field */}
+          <div className={cn(
+            'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg flex-1 min-w-0',
+            getOrig('opacity') !== undefined ? 'border-panel-blue' : 'border-panel-border',
+          )}>
+            <span
+              className="w-3 h-3 rounded-sm border border-panel-border shrink-0"
+              style={{ background: 'linear-gradient(135deg, #fff 50%, #bbb 50%)', backgroundSize: '6px 6px' }}
+            />
             <input
               key={opacityPct}
               type="text"
@@ -165,34 +279,113 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
                 if (!isNaN(pct)) set('opacity', String(Math.min(1, Math.max(0, pct / 100))), pct < opacityPct ? 'Reduce opacity' : 'Increase opacity');
               }}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-              className="w-full h-7 pl-5 pr-1.5 rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary text-right focus:outline-none focus:ring-1 focus:ring-panel-blue"
+              className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
             />
+            <span className="text-[10px] text-panel-text-label shrink-0">%</span>
+          </div>
+
+          {/* Corner radius field (uniform) */}
+          <div className={cn(
+            'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg flex-1 min-w-0',
+            getOrig('border-top-left-radius') !== undefined ? 'border-panel-blue' : 'border-panel-border',
+          )}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-panel-text-label">
+              <path d="M8 1H4a3 3 0 00-3 3v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <input
+              key={radiusAllSame ? tl : 'mixed'}
+              type="text"
+              defaultValue={radiusAllSame ? (Math.round(parseFloat(tl)) || 0) : ''}
+              placeholder={!radiusAllSame ? 'Mixed' : undefined}
+              onBlur={e => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) setAllRadius(`${v}px`);
+              }}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+              className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none placeholder:text-panel-text-label"
+            />
+          </div>
+
+          {/* Expand corners toggle */}
+          <button
+            onClick={() => setCornerExpanded(c => !c)}
+            title={cornerExpanded ? 'Collapse corners' : 'Expand corners'}
+            className={cn(
+              'flex items-center justify-center w-5 h-[22px] rounded border shrink-0 transition-colors',
+              (cornerExpanded || !radiusAllSame)
+                ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                : 'border-panel-border bg-panel-input-bg text-panel-text-label hover:bg-panel-row-hover',
+            )}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1 3V2a1 1 0 011-1h1M6 1h1a1 1 0 011 1v1M9 6v1a1 1 0 01-1 1H7M4 9H3a1 1 0 01-1-1V7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Blend mode */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-panel-text-label block">Blend mode</span>
+          <div className={cn(
+            'relative h-[22px] rounded-md border bg-panel-input-bg',
+            getOrig('mix-blend-mode') !== undefined ? 'border-panel-blue' : 'border-panel-border',
+          )}>
+            <select
+              value={get('mix-blend-mode') || 'normal'}
+              onChange={e => set('mix-blend-mode', e.target.value, `Set blend mode to ${e.target.value}`)}
+              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+              className="absolute inset-0 w-full h-full pl-1.5 pr-5 bg-transparent text-[11px] text-panel-text-primary focus:outline-none cursor-pointer"
+            >
+              {[
+                'normal', 'multiply', 'screen', 'overlay',
+                'darken', 'lighten', 'color-dodge', 'color-burn',
+                'hard-light', 'soft-light', 'difference', 'exclusion',
+                'hue', 'saturation', 'color', 'luminosity',
+              ].map(m => (
+                <option key={m} value={m} style={{ background: 'var(--panel-bg, #1e1e1e)', color: 'inherit' }}>
+                  {m.charAt(0).toUpperCase() + m.slice(1).replace(/-/g, ' ')}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-0 top-0 h-full flex items-center pr-1.5 pointer-events-none">
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-panel-text-label">
+                <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
         </div>
 
-        {/* Corner radius */}
-        <div className="space-y-0.5">
-          <span className="text-[10px] text-panel-text-label block">Corner radius</span>
-          {radiusAllSame ? (
-            <NumericField
-              label="◯"
-              value={tl}
-              original={getOrig('border-top-left-radius')}
-              onChange={setAllRadius}
-            />
-          ) : (
-            <div className="grid grid-cols-2 gap-1">
-              <NumericField label="TL" value={tl} original={getOrig('border-top-left-radius')}
-                onChange={v => set('border-top-left-radius',    v, 'Change top-left radius')} />
-              <NumericField label="TR" value={tr} original={getOrig('border-top-right-radius')}
-                onChange={v => set('border-top-right-radius',   v, 'Change top-right radius')} />
-              <NumericField label="BR" value={br} original={getOrig('border-bottom-right-radius')}
-                onChange={v => set('border-bottom-right-radius',v, 'Change bottom-right radius')} />
-              <NumericField label="BL" value={bl} original={getOrig('border-bottom-left-radius')}
-                onChange={v => set('border-bottom-left-radius', v, 'Change bottom-left radius')} />
-            </div>
-          )}
-        </div>
+        {/* Individual corner radius fields */}
+        {(cornerExpanded || !radiusAllSame) && (
+          <div className="grid grid-cols-2 gap-1">
+            {([
+              { prop: 'border-top-left-radius',     val: tl, desc: 'Change top-left radius',     Icon: CornerTLIcon },
+              { prop: 'border-top-right-radius',    val: tr, desc: 'Change top-right radius',    Icon: CornerTRIcon },
+              { prop: 'border-bottom-left-radius',  val: bl, desc: 'Change bottom-left radius',  Icon: CornerBLIcon },
+              { prop: 'border-bottom-right-radius', val: br, desc: 'Change bottom-right radius', Icon: CornerBRIcon },
+            ] as const).map(({ prop, val, desc, Icon }) => {
+              const orig = getOrig(prop);
+              const isChanged = orig !== undefined && val !== orig;
+              return (
+                <div key={prop} className={cn(
+                  'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg',
+                  isChanged ? 'border-panel-blue' : 'border-panel-border',
+                )}>
+                  <Icon />
+                  <input
+                    type="text"
+                    defaultValue={Math.round(parseFloat(val)) || 0}
+                    key={val}
+                    onBlur={e => set(prop, `${parseFloat(e.target.value) || 0}px`, desc)}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </div>
 
       {/* ── Typography ─────────────────────── */}
@@ -211,11 +404,8 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
       <SectionHeader title="Stroke" onAdd={() => {}} />
       <StrokeSection get={get} getOrig={getOrig} set={set} />
 
-      {/* ── Effects (collapsed) ────────────── */}
-      <CollapsedSection title="Effects" />
-
-      {/* ── Export (collapsed) ─────────────── */}
-      <CollapsedSection title="Export" />
+      {/* ── Effects ────────────────────────── */}
+      <EffectsSection get={get} set={set} />
 
     </div>
   );

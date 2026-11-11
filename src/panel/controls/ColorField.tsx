@@ -1,10 +1,12 @@
 /**
  * Figma-style color row: [swatch | HEX | 100 | %]  [eye]  [−]
- * Full color picker is M2; for now uses <input type="color"> via swatch.
+ * Clicking the swatch opens an inline HSB color picker.
  */
 
 import React, { useState, useEffect } from 'react';
+import { EyeLinearIcon, EyeOffLinearIcon, MinusLinearIcon } from '@solar-icons/react';
 import { cn } from '@/lib/utils';
+import { ColorPicker } from './ColorPicker';
 
 interface ColorFieldProps {
   value: string;
@@ -42,107 +44,108 @@ function extractOpacity(color: string): number {
 }
 
 export function ColorField({ value, original, disabled, onChange, onRemove }: ColorFieldProps) {
-  const [hex, setHex] = useState(() => toHex(value));
-  const [visible, setVisible] = useState(true);
+  const [hex, setHex]           = useState(() => toHex(value));
+  const [hexTyped, setHexTyped] = useState(() => toHex(value).slice(1).toUpperCase());
+  const [visible, setVisible]   = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const isChanged = original !== undefined && value !== original;
-  const opacity = extractOpacity(value);
+  const opacity   = extractOpacity(value);
 
-  useEffect(() => { setHex(toHex(value)); }, [value]);
+  useEffect(() => {
+    const h = toHex(value);
+    setHex(h);
+    setHexTyped(h.slice(1).toUpperCase());
+  }, [value]);
 
-  const displayHex = hex.replace('#', '').toUpperCase();
+  function handlePickerChange(newHex: string, newOpacity: number) {
+    setHex(newHex);
+    setHexTyped(newHex.slice(1).toUpperCase());
+    if (newOpacity < 100) {
+      const alpha = Math.round(newOpacity * 2.55).toString(16).padStart(2, '0');
+      onChange(`${newHex}${alpha}`);
+    } else {
+      onChange(newHex);
+    }
+  }
 
   return (
-    <div className="flex items-center gap-1">
-      {/* Main field: swatch + hex + opacity */}
-      <div
-        className={cn(
+    <div>
+      <div className="flex items-center gap-1">
+        {/* Main field: swatch + hex + opacity */}
+        <div className={cn(
           'flex items-center gap-1.5 flex-1 h-[22px] px-1.5 rounded-md border bg-panel-input-bg',
           isChanged ? 'border-panel-blue' : 'border-panel-border',
           disabled && 'opacity-40',
-        )}
-      >
-        {/* Color swatch — also acts as color picker trigger */}
-        <label className="relative shrink-0 cursor-pointer">
-          <div
-            className="w-[14px] h-[14px] rounded-sm border border-black/20"
-            style={{ backgroundColor: visible ? hex : 'transparent' }}
+        )}>
+          {/* Swatch — toggles picker */}
+          <button
+            onClick={() => !disabled && setPickerOpen(o => !o)}
+            disabled={disabled}
+            className="shrink-0 rounded-sm border border-black/20 outline-none focus:ring-1 focus:ring-panel-blue"
+            style={{ width: 14, height: 14, backgroundColor: visible ? hex : 'transparent' }}
           />
+
+          {/* Hex text — local state so cursor is preserved while typing */}
           <input
-            type="color"
-            value={hex}
+            type="text"
+            value={hexTyped}
             disabled={disabled}
             onChange={e => {
-              setHex(e.target.value);
-              onChange(e.target.value);
+              const v = e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6).toUpperCase();
+              setHexTyped(v);
+              if (v.length === 6) {
+                const full = `#${v.toLowerCase()}`;
+                setHex(full);
+                onChange(full);
+              }
             }}
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+            className="flex-1 min-w-0 bg-transparent text-[11px] font-panel text-panel-text-primary focus:outline-none uppercase"
           />
-        </label>
 
-        {/* Hex text */}
-        <input
-          type="text"
-          value={displayHex}
-          disabled={disabled}
-          onChange={e => {
-            const v = e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
-            if (v.length === 6) {
-              const full = `#${v}`;
-              setHex(full);
-              onChange(full);
-            }
-          }}
-          className="flex-1 min-w-0 bg-transparent text-[11px] font-panel text-panel-text-primary focus:outline-none uppercase"
-        />
+          {/* Opacity */}
+          <input
+            type="text"
+            defaultValue={opacity}
+            key={opacity}
+            disabled={disabled}
+            onBlur={e => {
+              const pct = Math.min(100, Math.max(0, parseFloat(e.target.value) || 100));
+              if (pct < 100) onChange(`${hex}${Math.round(pct * 2.55).toString(16).padStart(2, '0')}`);
+              else onChange(hex);
+            }}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            className="w-6 bg-transparent text-[11px] font-panel text-panel-text-secondary text-right focus:outline-none"
+          />
+          <span className="text-[10px] text-panel-text-label shrink-0">%</span>
+        </div>
 
-        {/* Opacity */}
-        <input
-          type="text"
-          defaultValue={opacity}
-          disabled={disabled}
-          onBlur={e => {
-            const pct = Math.min(100, Math.max(0, parseFloat(e.target.value) || 100));
-            if (pct < 100) onChange(`${hex}${Math.round(pct * 2.55).toString(16).padStart(2, '0')}`);
-            else onChange(hex);
-          }}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-          className="w-6 bg-transparent text-[11px] font-panel text-panel-text-secondary text-right focus:outline-none"
-        />
-        <span className="text-[10px] text-panel-text-label shrink-0">%</span>
+        {/* Eye (visibility toggle) */}
+        <button
+          onClick={() => setVisible(v => !v)}
+          title={visible ? 'Hide fill' : 'Show fill'}
+          className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0"
+        >
+          {visible ? <EyeLinearIcon size={12} /> : <EyeOffLinearIcon size={12} />}
+        </button>
+
+        {/* Minus (remove) */}
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            title="Remove"
+            className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-red-400 hover:bg-panel-row-hover shrink-0"
+          >
+            <MinusLinearIcon size={10} />
+          </button>
+        )}
       </div>
 
-      {/* Eye (visibility toggle) */}
-      <button
-        onClick={() => setVisible(v => !v)}
-        title={visible ? 'Hide fill' : 'Show fill'}
-        className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0"
-      >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          {visible ? (
-            <>
-              <path d="M6 2.5C3.5 2.5 1.5 6 1.5 6C1.5 6 3.5 9.5 6 9.5C8.5 9.5 10.5 6 10.5 6C10.5 6 8.5 2.5 6 2.5Z" stroke="currentColor" strokeWidth="1" fill="none"/>
-              <circle cx="6" cy="6" r="1.5" fill="currentColor"/>
-            </>
-          ) : (
-            <>
-              <path d="M6 2.5C3.5 2.5 1.5 6 1.5 6C1.5 6 3.5 9.5 6 9.5C8.5 9.5 10.5 6 10.5 6C10.5 6 8.5 2.5 6 2.5Z" stroke="currentColor" strokeWidth="1" fill="none" strokeDasharray="2 1"/>
-              <line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" strokeWidth="1"/>
-            </>
-          )}
-        </svg>
-      </button>
-
-      {/* Minus (remove) */}
-      {onRemove && (
-        <button
-          onClick={onRemove}
-          title="Remove"
-          className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-red-400 hover:bg-panel-row-hover shrink-0"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </button>
+      {/* Inline HSB picker */}
+      {pickerOpen && !disabled && (
+        <div className="mt-1.5 p-2 rounded-lg border border-panel-border bg-panel-bg">
+          <ColorPicker hex={hex} opacity={opacity} onChange={handlePickerChange} />
+        </div>
       )}
     </div>
   );
