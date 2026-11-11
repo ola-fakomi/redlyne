@@ -16,7 +16,7 @@ export function ChangesTab({ changeSet, onReverted }: Props) {
     // Find the element to remove the preview
     const elRec = changeSet.elements.find(e => e.element_id === elId);
     if (elRec) {
-      const el = document.querySelector(`[data-redline-track="${elId}"]`);
+      const el = document.querySelector(`[data-redlyne-track="${elId}"]`);
       if (el) removePreview(el, property);
     }
     revertChange(elId, changeId);
@@ -24,7 +24,7 @@ export function ChangesTab({ changeSet, onReverted }: Props) {
   }
 
   function handleRevertElement(elId: string) {
-    const el = document.querySelector(`[data-redline-track="${elId}"]`);
+    const el = document.querySelector(`[data-redlyne-track="${elId}"]`);
     if (el) {
       // Remove all previews for this element
       const elRec = changeSet.elements.find(e => e.element_id === elId);

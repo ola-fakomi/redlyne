@@ -76,13 +76,13 @@ function buildLocator(el: Element): Locator {
 /** Find or create an ElementRecord for this DOM element. */
 function getOrCreateElement(el: Element): ElementRecord {
   // Use a temporary attribute to link the element to a record
-  let elId = el.getAttribute('data-redline-track');
+  let elId = el.getAttribute('data-redlyne-track');
   if (elId) {
     const existing = changeSet.elements.find(e => e.element_id === elId);
     if (existing) return existing;
   }
   const id = `el_${++elementCounter}`;
-  el.setAttribute('data-redline-track', id);
+  el.setAttribute('data-redlyne-track', id);
   const record: ElementRecord = {
     element_id: id,
     label: readLabel(el),

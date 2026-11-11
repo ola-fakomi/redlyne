@@ -153,7 +153,7 @@ export function generateCopiedText(cs: ChangeSet): string {
 
   const lines: string[] = [];
 
-  lines.push('# Redline: apply these visual changes to the code');
+  lines.push('# Redlyne: apply these visual changes to the code');
   lines.push('');
   lines.push('I edited the running page in my browser and approved the results below.');
   lines.push('Update the source code so the real page matches every "To" value.');

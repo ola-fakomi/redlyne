@@ -1,33 +1,35 @@
 {
-  "name": "redline",
+  "name": "redlyne",
   "version": "0.0.1",
-  "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo": "cd fixtures/react-vite-tailwind && pnpm install && pnpm dev"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@radix-ui/react-tabs": "^1.1.2",
-    "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-label": "^2.1.1",
-    "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-scroll-area": "^1.2.2",
+    "@radix-ui/react-separator": "^1.1.1",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.2",
+    "@solar-icons/react": "^2.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.6.0",
     "lucide-react": "^0.469.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "wxt": "^0.19.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.3",
-    "tailwindcss": "^3.4.17",
     "autoprefixer": "^10.4.20",
-    "vitest": "^2.1.8"
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "wxt": "^0.19.0"
   }
 }

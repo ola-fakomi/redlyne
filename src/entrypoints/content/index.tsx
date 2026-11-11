@@ -33,7 +33,7 @@ export default defineContentScript({
 
     async function mountPanel() {
       ui = await createShadowRootUi(ctx, {
-        name: 'redline-panel',
+        name: 'redlyne-panel',
         position: 'overlay',
         zIndex: 2147483647,
         onMount(container, shadow, shadowHost) {
@@ -43,7 +43,7 @@ export default defineContentScript({
           shadow.prepend(styleEl);
 
           // Add base class so our CSS rules apply
-          container.className = 'redline-root';
+          container.className = 'redlyne-root';
           container.style.cssText = 'pointer-events:none;';
 
           const root = createRoot(container);

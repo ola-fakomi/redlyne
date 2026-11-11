@@ -10,7 +10,8 @@
  * Gap between sections: 8px (gap-2)
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
+import { SunLinearIcon, MoonLinearIcon, AddCircleLinearIcon, CloseLinearIcon } from '@solar-icons/react';
 import logoDark from '@/assets/logo-dark.png';
 import logoLight from '@/assets/logo-light.png';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -32,6 +33,11 @@ import { generateCopiedText } from '@/prompt/generator';
 import { type ChangeSet } from '@/schema';
 import { cn } from '@/lib/utils';
 
+const EXT_VERSION: string = (() => {
+  try { return (globalThis as any).chrome?.runtime?.getManifest?.()?.version ?? '0.0.1'; }
+  catch { return '0.0.1'; }
+})();
+
 interface Props {
   shadowHost: Element;
 }
@@ -45,7 +51,7 @@ function RedlineLogo({ isDark }: { isDark: boolean }) {
   return (
     <img
       src={isDark ? logoDark : logoLight}
-      alt="Redline"
+      alt="Redlyne"
       style={{ width: 28, height: 28, objectFit: 'contain', display: 'block', userSelect: 'none' }}
       draggable={false}
     />
@@ -77,49 +83,40 @@ function IconBtn({
   );
 }
 
-// ── SVG icons ───────────────────────────────────────────────────
-function SunIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="7" cy="7" r="2.5" fill="currentColor"/>
-      <line x1="7" y1="1"    x2="7"    y2="2.5"  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="7" y1="11.5" x2="7"    y2="13"   stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="7"    x2="2.5"  y2="7"    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="11.5" y1="7" x2="13"   y2="7"    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="2.93" y1="2.93"   x2="3.99" y2="3.99"   stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="10.01" y1="10.01" x2="11.07" y2="11.07" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="11.07" y1="2.93"  x2="10.01" y2="3.99"  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="3.99" y1="10.01"  x2="2.93"  y2="11.07" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
+// ── Error boundary ───────────────────────────────────────────────
+class DesignErrorBoundary extends Component<
+  { children: React.ReactNode; onReset: () => void },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; onReset: () => void }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { console.error('[Redlyne] DesignTab crash:', error.message, error.stack); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-4 flex flex-col gap-2 text-[11px]">
+          <span className="text-red-400 font-medium">Could not read this element.</span>
+          <button
+            onClick={() => { this.setState({ error: null }); this.props.onReset(); }}
+            className="text-panel-blue underline text-left"
+          >
+            Deselect and try another
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-function MoonIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M11.5 8.5A5 5 0 1 1 5.5 2.5a3.5 3.5 0 0 0 6 6Z" fill="currentColor"/>
-    </svg>
-  );
-}
-
-function PlusCircleIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="7" y1="4" x2="7" y2="10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="4" y1="7" x2="10" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      <line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
-}
+// ── Icons (lucide-react) ─────────────────────────────────────────
+function SunIcon()        { return <SunLinearIcon size={14} />; }
+function MoonIcon()       { return <MoonLinearIcon size={14} />; }
+function PlusCircleIcon() { return <AddCircleLinearIcon size={14} />; }
+function XIcon()          { return <CloseLinearIcon size={12} />; }
 
 // ── Main panel component ─────────────────────────────────────────
 export function Panel({ shadowHost }: Props) {
@@ -130,14 +127,22 @@ export function Panel({ shadowHost }: Props) {
   const [copyLabel, setCopyLabel]       = useState<'default' | 'copied'>('default');
   const [tab, setTab]                   = useState('design');
   const [isDark, setIsDark]             = useState(() => {
-    try { return localStorage.getItem('redline-theme') !== 'light'; } catch { return true; }
+    try {
+      // Migrate theme preference from old key (pre-rename)
+      const legacy = localStorage.getItem('redline-theme');
+      if (legacy !== null) {
+        localStorage.setItem('redlyne-theme', legacy);
+        localStorage.removeItem('redline-theme');
+      }
+      return localStorage.getItem('redlyne-theme') !== 'light';
+    } catch { return true; }
   });
 
   // Theme
   useEffect(() => {
-    const container = shadowHost.shadowRoot?.querySelector('.redline-root');
+    const container = shadowHost.shadowRoot?.querySelector('.redlyne-root');
     if (container) container.classList.toggle('light', !isDark);
-    try { localStorage.setItem('redline-theme', isDark ? 'dark' : 'light'); } catch {}
+    try { localStorage.setItem('redlyne-theme', isDark ? 'dark' : 'light'); } catch {}
   }, [isDark, shadowHost]);
 
   // Drag position
@@ -162,7 +167,7 @@ export function Panel({ shadowHost }: Props) {
         e.preventDefault();
         const entry = popUndo();
         if (entry) {
-          const domEl = document.querySelector(`[data-redline-track="${entry.elementId}"]`);
+          const domEl = document.querySelector(`[data-redlyne-track="${entry.elementId}"]`);
           if (domEl) removePreview(domEl, entry.property);
           revertChange(entry.elementId, entry.changeId);
           setChangeSet({ ...getChangeSet() });
@@ -273,7 +278,7 @@ export function Panel({ shadowHost }: Props) {
       }
     : {
         height: 28, borderRadius: 8,
-        background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 45%, rgba(79,79,79,0.24) 100%)',
+        background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 50%, #deedff 100%)',
         boxShadow: 'inset 0 0 0 0.5px rgba(106, 0, 4, 0.25)',
         border: 'none',
         color: '#6a0004',
@@ -296,7 +301,7 @@ export function Panel({ shadowHost }: Props) {
       {/* ── Outer container ─────────────────────────────────── */}
       <div
         style={{ position: 'fixed', right: pos.right, top: pos.top, zIndex: 2147483647, pointerEvents: 'all' }}
-        className="w-[300px] flex flex-col rounded-[12px] font-panel select-none max-h-[85vh] bg-panel-outer p-1 gap-[2px]"
+        className="w-[300px] flex flex-col rounded-[12px] font-panel select-none max-h-[85vh] bg-panel-outer p-1 gap-[1px]"
       >
 
         {/* ── SECTION 1: Header / Logo ─────────────────────── */}
@@ -362,11 +367,13 @@ export function Panel({ shadowHost }: Props) {
             <div className="flex-1 overflow-y-auto min-h-0">
               <TabsContent value="design" className="mt-0">
                 {selectedEl ? (
-                  <DesignTab el={selectedEl} onChangeRecorded={refreshChanges} />
+                  <DesignErrorBoundary onReset={() => setSelectedEl(null)}>
+                    <DesignTab el={selectedEl} onChangeRecorded={refreshChanges} />
+                  </DesignErrorBoundary>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-32 gap-2 text-panel-text-label">
                     <PlusCircleIcon />
-                    <span className="text-[11px]">Click ⊕ above to select an element</span>
+                    <span className="text-[11px]">Click or Press <kbd className="px-1 py-px rounded border border-panel-border bg-panel-input-bg font-mono text-[10px] text-panel-text-primary not-italic">v</kbd> to select an element</span>
                   </div>
                 )}
               </TabsContent>
@@ -379,7 +386,7 @@ export function Panel({ shadowHost }: Props) {
         </div>
 
         {/* ── SECTION 3: Footer ────────────────────────────── */}
-        <div className="flex items-center justify-between p-2 bg-panel-header-bg rounded-[12px] shrink-0">
+        <div className="flex items-center justify-between p-2 bg-panel-header-bg rounded-[8px] shrink-0">
           <div className="flex items-center gap-2">
             {total > 0 && (
               <button
@@ -390,7 +397,7 @@ export function Panel({ shadowHost }: Props) {
               </button>
             )}
             {total === 0 && (
-              <span className="text-[11px] text-panel-text-label">No changes</span>
+              <span className="text-[11px] text-panel-text-label">No changes · v{EXT_VERSION}</span>
             )}
           </div>
 
