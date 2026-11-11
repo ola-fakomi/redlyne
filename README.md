@@ -1,36 +1,42 @@
-# Redline
+# Redlyne by Ola Fakomi
 
-Figma-style live editor for the browser. Select any element, edit its CSS properties, and click **Copy changes** to paste a precise description into Claude Code.
+Edit any web page with Figma-style controls, then paste every change into Claude Code as one precise prompt.
 
-## M0 — MVP
-
-**What works in M0:**
-- Hover and click element selection with a blue Figma-style outline
-- Property panel: Auto Layout, Size, Spacing (margin), Fill, Typography, Corner radius, Stroke
-- Live CSS preview via a constructable stylesheet (never touches app code)
-- Changes tab with per-change and per-element revert
-- **Copy changes** — one click copies the exact Markdown Claude Code needs
-- **Clear previews** — removes all previews and clears the change list
-- Fixture: `fixtures/react-vite-tailwind` (React 19, Vite, Tailwind CSS)
+<!-- TODO: replace with demo GIF -->
+![Demo](design/demo.gif)
 
 ---
 
-## Setup
+## The problem
 
-```bash
-cd redline
-pnpm install
-pnpm build
-```
+When you're building UI with Claude Code, small design fixes take the most back-and-forth. One change is easy to describe. Ten changes mean screenshots, voice notes, or redoing the screen in Figma so Claude can read it.
 
-## Load in Chrome
+## How it works
 
-1. Open `chrome://extensions`
-2. Turn on **Developer mode** (top right)
-3. Click **Load unpacked**
-4. Select the `.output/chrome-mv3` folder
+1. **Select** — click any element on the live page with Redlyne's Figma-style picker.
+2. **Edit** — adjust spacing, layout, color, typography, radius, stroke, and effects in the properties panel. Changes show live.
+3. **Copy changes** — one click generates a Markdown prompt with each element's exact before and after values. Paste it into Claude Code.
 
-## Run the fixture
+Redlyne makes no network calls. Nothing leaves your browser except what you paste.
+
+---
+
+## Install (Developer mode)
+
+Until Redlyne is on the Chrome Web Store, install it manually:
+
+1. Download the latest `redlyne-vX.X.X.zip` from the [Releases](../../releases) page and unzip it.
+2. Open `chrome://extensions` in Chrome.
+3. Turn on **Developer mode** (toggle, top right).
+4. Click **Load unpacked** and select the unzipped folder.
+
+The extension ID is stable — it will not change when you update.
+
+---
+
+## Try it on the demo app
+
+The repo includes a React + Vite + Tailwind fixture you can run locally:
 
 ```bash
 cd fixtures/react-vite-tailwind
@@ -38,17 +44,30 @@ pnpm install
 pnpm dev
 ```
 
-The fixture runs at `http://localhost:5173`.
+Open `http://localhost:5173` in Chrome (with Redlyne loaded), then:
 
-## Dev mode (live reload)
+1. Click the **+** button in the Redlyne panel (or press `V`) to enter select mode.
+2. Click the **Pro** pricing card.
+3. Change **Padding T** and **Gap** in the panel — the page updates live.
+4. Click **Copy changes** and paste the result into Claude Code.
+
+---
+
+## Build from source
+
+```bash
+pnpm install
+pnpm build
+# Load .output/chrome-mv3 as an unpacked extension (see Install above)
+```
+
+**Watch mode** (live-rebuilds on save):
 
 ```bash
 pnpm dev
 ```
 
-WXT opens a separate test browser with Redline auto-loaded.
-
-## Run tests
+**Tests:**
 
 ```bash
 pnpm test
@@ -56,26 +75,52 @@ pnpm test
 
 ---
 
-## M0 exit check
-
-1. Load the fixture: `cd fixtures/react-vite-tailwind && pnpm dev`
-2. Open `http://localhost:5173` in Chrome (with Redline loaded)
-3. Click the **⊕** button in the Redline panel (or press `Alt+Shift+D` to open the panel first if it's closed, then click ⊕)
-4. Click the **Pro** pricing card
-5. In the panel, change **Padding T** from its current value to something smaller (e.g. `16`)
-6. Change **Gap** to `8`
-7. Click **Copy changes**
-8. Paste the result into Claude Code (in the fixture project)
-
-**Expected:** Claude Code identifies `src/components/PricingCard.tsx`, updates the `gap-4` and `p-6` Tailwind classes (or the equivalent CSS), and the fixture hot-reloads to match the preview.
-
----
-
-## Shortcut
+## Keyboard shortcuts
 
 | Action | Key |
 |---|---|
 | Toggle panel | Toolbar icon or `Alt+Shift+D` |
-| Enter select mode | Click ⊕ in header |
-| Cancel select | Esc |
-| Deselect element | Esc or ✕ in header |
+| Enter select mode | `V` or click `+` in header |
+| Cancel select | `Esc` |
+| Deselect element | `Esc` or `X` in header |
+| Undo last change | `Cmd/Ctrl+Z` |
+
+---
+
+## What's supported
+
+- Auto layout (direction, alignment, gap)
+- Size (width, height, fill/hug)
+- Spacing (margin, all four sides)
+- Fill (solid color, gradient, image)
+- Typography (family, size, weight, line height, letter spacing, alignment, decoration)
+- Corner radius (all corners or per corner)
+- Stroke (color, width, style, position)
+- Effects (box shadow, blur)
+
+## Current limitations
+
+- Works on `localhost` and `127.0.0.1` only (host permission scope).
+- CSS-in-JS frameworks may not reflect source file locations.
+- Dynamic text nodes show as low-confidence in the copied prompt.
+
+---
+
+## Roadmap
+
+- Chrome Web Store listing for one-click installs.
+- Support for all URLs, not just localhost.
+- Responsive editing (per-breakpoint changes).
+- Variable and token picker.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests go in [Issues](../../issues).
+
+## License
+
+AGPL-3.0-or-later. See [LICENSE](LICENSE).
+
+Copyright (C) 2026 Ola Fakomi.
