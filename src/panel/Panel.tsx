@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
-import { SunLinearIcon, MoonLinearIcon, AddCircleLinearIcon, CloseLinearIcon } from '@solar-icons/react';
+import { SunLinearIcon, MoonLinearIcon, AddCircleLinearIcon, CloseLinearIcon, MinusCircleLinearIcon } from '@solar-icons/react';
 import logoDark from '@/assets/logo-dark.png';
 import logoLight from '@/assets/logo-light.png';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -124,6 +124,7 @@ const EXT_VERSION: string = (() => {
 
 interface Props {
   shadowHost: Element;
+  onClose: () => void;
 }
 
 function isInsidePanel(e: Event, shadowHost: Element): boolean {
@@ -201,9 +202,10 @@ function SunIcon()        { return <SunLinearIcon size={14} />; }
 function MoonIcon()       { return <MoonLinearIcon size={14} />; }
 function PlusCircleIcon() { return <AddCircleLinearIcon size={14} />; }
 function XIcon()          { return <CloseLinearIcon size={12} />; }
+function DeselectIcon()   { return <MinusCircleLinearIcon size={13} />; }
 
 // ── Main panel component ─────────────────────────────────────────
-export function Panel({ shadowHost }: Props) {
+export function Panel({ shadowHost, onClose }: Props) {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [hoveredEl, setHoveredEl]       = useState<Element | null>(null);
   const [selectedEl, setSelectedEl]     = useState<Element | null>(null);
@@ -480,9 +482,14 @@ export function Panel({ shadowHost }: Props) {
                 onClick={() => { setSelectedEl(null); setIsSelectMode(false); }}
                 title="Deselect element"
               >
-                <XIcon />
+                <DeselectIcon />
               </IconBtn>
             )}
+
+            {/* Close panel */}
+            <IconBtn onClick={onClose} title="Close Redlyne">
+              <XIcon />
+            </IconBtn>
           </div>
         </div>
 

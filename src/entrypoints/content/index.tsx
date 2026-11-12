@@ -40,7 +40,8 @@ export default defineContentScript({
           // Inject Tailwind + panel CSS via adoptedStyleSheets (most reliable for shadow DOM)
           try {
             const sheet = new CSSStyleSheet();
-            sheet.replaceSync(panelStyles);
+            // adoptedStyleSheets does not support @import rules — strip them before injecting
+            sheet.replaceSync(panelStyles.replace(/@import[^;]+;/g, ''));
             shadow.adoptedStyleSheets = [sheet];
           } catch {
             // Fallback for older Chrome versions
@@ -57,7 +58,7 @@ export default defineContentScript({
           const root = createRoot(container);
           root.render(
             <React.StrictMode>
-              <Panel shadowHost={shadowHost} />
+              <Panel shadowHost={shadowHost} onClose={togglePanel} />
             </React.StrictMode>,
           );
           return root;
