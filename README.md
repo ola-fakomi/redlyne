@@ -22,7 +22,7 @@ Redlyne makes no network calls. Nothing leaves your browser except what you past
 
 ## Install (Developer mode)
 
-1. Download **[redlyne-v0.0.1.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.1)** and unzip it.
+1. Download **[redlyne-v0.0.2.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.2)** and unzip it.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (toggle, top right).
 4. Click **Load unpacked** and select the unzipped `chrome-mv3` folder.
@@ -110,7 +110,7 @@ pnpm test
 
 ## Current limitations
 
-- Works on `localhost` and `127.0.0.1` only (host permission scope).
+- Works on all URLs.
 - CSS-in-JS frameworks may not reflect source file locations.
 - Dynamic text nodes show as low-confidence in the copied prompt.
 
