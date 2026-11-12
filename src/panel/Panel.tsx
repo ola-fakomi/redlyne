@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
-import { SunLinearIcon, MoonLinearIcon, AddCircleLinearIcon, CloseLinearIcon, MinusCircleLinearIcon } from '@solar-icons/react';
+import { SunLinearIcon, MoonLinearIcon, AddCircleLinearIcon, CloseLinearIcon, MinusCircleLinearIcon, SettingsMinimalisticLinearIcon } from '@solar-icons/react';
 import logoDark from '@/assets/logo-dark.png';
 import logoLight from '@/assets/logo-light.png';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -30,6 +30,16 @@ import {
 } from '@/engine/changeTracker';
 import { clearAllPreviews, removePreview } from '@/engine/overlay';
 import { generateCopiedText } from '@/prompt/generator';
+import { estimateTokens } from '@/prompt/compact';
+import {
+  loadSettings,
+  saveSettings,
+  type RedlyneSettings,
+  type PromptFormat,
+  type RulesMode,
+  SETUP_PROMPT_CLAUDE,
+  SETUP_PROMPT_CODEX,
+} from '@/engine/settings';
 import { type ChangeSet } from '@/schema';
 import { cn } from '@/lib/utils';
 
@@ -203,6 +213,7 @@ function MoonIcon()       { return <MoonLinearIcon size={14} />; }
 function PlusCircleIcon() { return <AddCircleLinearIcon size={14} />; }
 function XIcon()          { return <CloseLinearIcon size={12} />; }
 function DeselectIcon()   { return <MinusCircleLinearIcon size={13} />; }
+function GearIcon()       { return <SettingsMinimalisticLinearIcon size={13} />; }
 
 // ── Main panel component ─────────────────────────────────────────
 export function Panel({ shadowHost, onClose }: Props) {
@@ -216,6 +227,11 @@ export function Panel({ shadowHost, onClose }: Props) {
   const [layerTree, setLayerTree]       = useState<LayerNodeData | null>(null);
   const [layerExpanded, setLayerExpanded] = useState<Set<string>>(new Set());
   const [layerSelected, setLayerSelected] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen]   = useState(false);
+  const [promptSectionOpen, setPromptSectionOpen] = useState(false);
+  const [howToOpen, setHowToOpen]         = useState(false);
+  const [settings, setSettings]           = useState<RedlyneSettings>(loadSettings);
+  const [setupCopied, setSetupCopied]     = useState<'claude' | 'codex' | null>(null);
   const [isDark, setIsDark]             = useState(() => {
     try {
       // Migrate theme preference from old key (pre-rename)
@@ -240,6 +256,27 @@ export function Panel({ shadowHost, onClose }: Props) {
   const dragRef = useRef<{ startX: number; startRight: number; startTop: number; startY: number } | null>(null);
 
   const refreshChanges = useCallback(() => { setChangeSet({ ...getChangeSet() }); }, []);
+
+  function updateSettings(patch: Partial<RedlyneSettings>) {
+    setSettings(prev => {
+      const next = { ...prev, ...patch };
+      saveSettings(next);
+      return next;
+    });
+  }
+
+  async function copySetupPrompt(kind: 'claude' | 'codex') {
+    const text = kind === 'claude' ? SETUP_PROMPT_CLAUDE : SETUP_PROMPT_CODEX;
+    try { await navigator.clipboard.writeText(text); } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      shadowHost.shadowRoot?.appendChild(ta);
+      ta.focus(); ta.select(); document.execCommand('copy');
+      shadowHost.shadowRoot?.removeChild(ta);
+    }
+    setSetupCopied(kind);
+  }
 
   // Build layer tree rooted at selectedEl whenever selection or panel changes
   useEffect(() => {
@@ -339,7 +376,7 @@ export function Panel({ shadowHost, onClose }: Props) {
 
   // Copy changes
   async function handleCopy() {
-    const text = generateCopiedText(getChangeSet());
+    const text = generateCopiedText(getChangeSet(), settings);
     try { await navigator.clipboard.writeText(text); }
     catch {
       const ta = document.createElement('textarea');
@@ -361,6 +398,12 @@ export function Panel({ shadowHost, onClose }: Props) {
 
   const pending = pendingCount();
   const total   = totalCount();
+
+  // Token estimate — computed from current prompt text
+  const promptText   = total > 0 ? generateCopiedText(getChangeSet(), settings) : '';
+  const tokenEstimate = estimateTokens(promptText);
+  const noSource     = changeSet.elements.some(e => e.changes.length > 0 && (!e.source.file || e.source.confidence === 'low'));
+  const tokenWarning = tokenEstimate >= 4000;
 
   // Copy button — flat fill, no gradient or shadow
   const copyBtnBase: React.CSSProperties = isDark
@@ -456,18 +499,20 @@ export function Panel({ shadowHost, onClose }: Props) {
           onMouseDown={onHeaderMouseDown}
           className="flex items-center justify-between py-0 px-[4px] cursor-move shrink-0"
         >
-          <RedlineLogo isDark={isDark} />
-
+          {/* Left: logo + settings */}
           <div className="flex items-center gap-1.5">
-            {/* Theme toggle */}
+            <RedlineLogo isDark={isDark} />
             <IconBtn
-              onClick={() => setIsDark(d => !d)}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              onClick={() => setSettingsOpen(o => !o)}
+              title="Settings"
+              active={settingsOpen}
             >
-              {isDark ? <SunIcon /> : <MoonIcon />}
+              <GearIcon />
             </IconBtn>
+          </div>
 
-            {/* Select mode */}
+          {/* Right: selector + deselect + close */}
+          <div className="flex items-center gap-1.5">
             <IconBtn
               onClick={() => setIsSelectMode(m => !m)}
               title={isSelectMode ? 'Cancel selection (Esc)' : 'Select element (V)'}
@@ -476,7 +521,6 @@ export function Panel({ shadowHost, onClose }: Props) {
               <PlusCircleIcon />
             </IconBtn>
 
-            {/* Deselect */}
             {selectedEl && (
               <IconBtn
                 onClick={() => { setSelectedEl(null); setIsSelectMode(false); }}
@@ -486,12 +530,179 @@ export function Panel({ shadowHost, onClose }: Props) {
               </IconBtn>
             )}
 
-            {/* Close panel */}
             <IconBtn onClick={onClose} title="Close Redlyne">
               <XIcon />
             </IconBtn>
           </div>
         </div>
+
+        {/* ── Settings panel ─────────────────────────────────── */}
+        {settingsOpen && (
+          <div className="bg-panel-bg rounded-[8px] shrink-0 font-panel overflow-hidden">
+
+            {/* ── 1. Mode ─────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-3 h-9 border-b border-panel-border">
+              <span className="text-[11px] text-panel-text-primary font-medium">Mode</span>
+              <div className="flex gap-0.5">
+                <button
+                  onClick={() => setIsDark(false)}
+                  className={cn(
+                    'h-[22px] px-2 rounded-md border text-[10px] transition-colors',
+                    !isDark
+                      ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                      : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                  )}
+                >Light</button>
+                <button
+                  onClick={() => setIsDark(true)}
+                  className={cn(
+                    'h-[22px] px-2 rounded-md border text-[10px] transition-colors',
+                    isDark
+                      ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                      : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                  )}
+                >Dark</button>
+              </div>
+            </div>
+
+            {/* ── 2. Prompt optimization (collapsible) ─────────── */}
+            <div className="border-b border-panel-border">
+              <button
+                onClick={() => setPromptSectionOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 h-9 text-left hover:bg-panel-row-hover transition-colors"
+              >
+                <span className="text-[11px] text-panel-text-primary font-medium">Prompt optimization</span>
+                <span className="text-[9px] text-panel-text-label">{promptSectionOpen ? '▴' : '▾'}</span>
+              </button>
+
+              {promptSectionOpen && (
+                <div className="px-3 pb-3 space-y-2.5 text-[11px]">
+                  {/* Format */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-panel-text-label">Format</span>
+                    <div className="flex gap-0.5">
+                      {(['compact', 'detailed'] as PromptFormat[]).map(f => (
+                        <button
+                          key={f}
+                          onClick={() => updateSettings({ promptFormat: f })}
+                          className={cn(
+                            'h-[22px] px-2 rounded-md border text-[10px] capitalize transition-colors',
+                            settings.promptFormat === f
+                              ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                              : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                          )}
+                        >{f}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rules */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-panel-text-label">Rules</span>
+                    <div className="flex gap-0.5">
+                      {(['installed', 'short', 'full'] as RulesMode[]).map(r => (
+                        <button
+                          key={r}
+                          onClick={() => updateSettings({ rulesMode: r })}
+                          className={cn(
+                            'h-[22px] px-2 rounded-md border text-[10px] capitalize transition-colors',
+                            settings.rulesMode === r
+                              ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                              : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                          )}
+                        >{r}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tailwind hints */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-panel-text-label">Tailwind hints</span>
+                    <div className="flex gap-0.5">
+                      {([true, false] as const).map(v => (
+                        <button
+                          key={String(v)}
+                          onClick={() => updateSettings({ tailwindSuggestions: v })}
+                          className={cn(
+                            'h-[22px] px-2 rounded-md border text-[10px] transition-colors',
+                            settings.tailwindSuggestions === v
+                              ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+                              : 'border-panel-border bg-panel-input-bg text-panel-text-secondary hover:bg-panel-row-hover',
+                          )}
+                        >{v ? 'On' : 'Off'}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <p className="text-[10px] text-panel-text-label leading-relaxed">
+                    Batch changes before copying to save tokens.
+                    {noSource && ' Some elements have no source — the agent will search.'}
+                  </p>
+
+                  {/* Install rules once */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-panel-text-label block">Install rules once (paste into AI)</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => copySetupPrompt('claude')}
+                        className="flex-1 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-[10px] text-panel-text-secondary hover:bg-panel-row-hover transition-colors"
+                      >
+                        {setupCopied === 'claude' ? '✓ Copied' : 'Claude Code'}
+                      </button>
+                      <button
+                        onClick={() => copySetupPrompt('codex')}
+                        className="flex-1 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-[10px] text-panel-text-secondary hover:bg-panel-row-hover transition-colors"
+                      >
+                        {setupCopied === 'codex' ? '✓ Copied' : 'Codex'}
+                      </button>
+                    </div>
+                    {setupCopied && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-panel-text-label flex-1">Did it work?</span>
+                        <button
+                          onClick={() => { updateSettings({ rulesMode: 'installed' }); setSetupCopied(null); }}
+                          className="h-[22px] px-2 rounded-md border border-panel-blue bg-panel-changed-bg text-[10px] text-panel-blue"
+                        >
+                          Yes — switch to Installed
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── 3. How to use (collapsible) ───────────────────── */}
+            <div>
+              <button
+                onClick={() => setHowToOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 h-9 text-left hover:bg-panel-row-hover transition-colors"
+              >
+                <span className="text-[11px] text-panel-text-primary font-medium">How to use</span>
+                <span className="text-[9px] text-panel-text-label">{howToOpen ? '▴' : '▾'}</span>
+              </button>
+
+              {howToOpen && (
+                <ol className="px-3 pb-3 space-y-1.5 list-none">
+                  {[
+                    'Select an element on the page — click the + button or press V, then click any element.',
+                    'Open Layers for detailed selection — use the Layers panel to navigate child elements.',
+                    'Edit in the property panel — adjust layout, color, typography, radius, stroke and effects. Changes apply live.',
+                    'Copy changes — click Copy changes to generate a prompt with exact before/after values.',
+                    'Paste into your AI — paste directly into Claude Code or Codex. The agent applies every change to your source files.',
+                  ].map((step, i) => (
+                    <li key={i} className="flex gap-2 text-[10px] text-panel-text-secondary leading-relaxed">
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-panel-input-bg border border-panel-border text-panel-text-label flex items-center justify-center text-[9px]">{i + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
+          </div>
+        )}
 
         {/* ── SECTION 2: Tabs + content (scrollable) ────────── */}
         <div className="flex flex-col bg-panel-bg rounded-[8px] overflow-hidden flex-1 min-h-0">
@@ -538,31 +749,39 @@ export function Panel({ shadowHost, onClose }: Props) {
         </div>
 
         {/* ── SECTION 3: Footer ────────────────────────────── */}
-        <div className="flex items-center justify-between p-2 bg-panel-header-bg rounded-[8px] shrink-0">
-          <div className="flex items-center gap-2">
-            {total > 0 && (
-              <button
-                onClick={handleClear}
-                className="h-[28px] px-2 rounded-[8px] border border-panel-border bg-panel-input-bg text-[11px] text-panel-text-secondary hover:bg-panel-row-hover transition-colors"
-              >
-                Clear
-              </button>
-            )}
-            {total === 0 && (
-              <span className="text-[11px] text-panel-text-label">No changes · v{EXT_VERSION}</span>
-            )}
-          </div>
+        <div className="flex flex-col gap-1 p-2 bg-panel-header-bg rounded-[8px] shrink-0">
 
-          {/* Copy changes button */}
-          {pending > 0 ? (
-            <button onClick={handleCopy} style={copyBtnStyle}>
-              {copyLabel === 'copied' ? '✓ Copied' : 'Copy changes'}
-            </button>
-          ) : (
-            <button disabled style={copyBtnDisabledStyle}>
-              Copy changes
-            </button>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {total > 0 && (
+                <button
+                  onClick={handleClear}
+                  className="h-[28px] px-2 rounded-[8px] border border-panel-border bg-panel-input-bg text-[11px] text-panel-text-secondary hover:bg-panel-row-hover transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+              {total === 0 && (
+                <span className="text-[11px] text-panel-text-label">No changes · v{EXT_VERSION}</span>
+              )}
+            </div>
+
+            {/* Copy changes button + token count */}
+            <div className="flex items-center gap-1.5">
+              {total > 0 && !tokenWarning && (
+                <span className="text-[10px] text-panel-text-label">~{tokenEstimate} tokens</span>
+              )}
+              {pending > 0 ? (
+                <button onClick={handleCopy} style={copyBtnStyle}>
+                  {copyLabel === 'copied' ? '✓ Copied' : 'Copy changes'}
+                </button>
+              ) : (
+                <button disabled style={copyBtnDisabledStyle}>
+                  Copy changes
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         </div> {/* end main panel */}

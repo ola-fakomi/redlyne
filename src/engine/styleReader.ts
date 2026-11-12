@@ -89,10 +89,16 @@ export function readLabel(el: Element): string {
   return el.tagName.charAt(0) + el.tagName.slice(1).toLowerCase();
 }
 
-/** Read text preview (first 80 chars of text content). */
+/** Read direct text nodes only (not descendants), trimmed, max 40 chars. */
 export function readTextPreview(el: Element): string | null {
-  const text = el.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80) ?? '';
-  return text || null;
+  const text = Array.from(el.childNodes)
+    .filter(n => n.nodeType === Node.TEXT_NODE)
+    .map(n => n.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  if (!text) return null;
+  return text.length > 40 ? text.slice(0, 40) + '…' : text;
 }
 
 /** Detect framework heuristically. */

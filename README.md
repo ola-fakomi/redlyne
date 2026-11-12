@@ -44,6 +44,54 @@ The **Copy changes** button generates a self-contained prompt — no screenshots
 
 ---
 
+## Prompt optimisation (v0.0.2)
+
+The ⚙ settings panel (gear icon, top-left of the panel) gives you three controls for shorter, cheaper prompts.
+
+### Prompt format
+
+| Format | What it does |
+|---|---|
+| **Compact** (default) | One line per change, grouped by source file. ~6–7× shorter than Detailed. |
+| **Detailed** | Full Markdown with a table, all locator fields, and all 11 rules. Use this if the agent struggles to find elements. |
+
+### Rules
+
+Each paste can include the rules the agent should follow. Three options:
+
+| Mode | What is included in the paste |
+|---|---|
+| **Short** (default) | A one-paragraph rules block in every paste. |
+| **Full** | The original 11-rule block in every paste. |
+| **Installed** | A single line: `Follow the Redlyne rules. Reply with one line per file.` Use this after you have installed the rules once (see below). |
+
+### Install rules once — the biggest token saving
+
+Instead of repeating the rules in every paste:
+
+1. Open ⚙ Settings → expand **Prompt optimization**.
+2. Click **Claude Code** or **Codex** to copy the setup prompt.
+3. Paste it into your AI assistant. It will create:
+   - **Claude Code**: `.claude/skills/redlyne/SKILL.md`
+   - **Codex**: a `## Redlyne rules` section in `AGENTS.md`
+4. Click **Yes — switch to Installed** to confirm. From now on every paste starts with one line instead of a full rules block.
+
+### Tailwind hints
+
+When Tailwind is detected, Redlyne suggests the exact class change alongside the CSS value:
+
+```
+border-radius: 12px → 0  [rounded-[12px] → rounded-none]
+```
+
+Toggle off in Settings → Prompt optimization if you do not use Tailwind.
+
+### Token count
+
+The estimated token count (`~130 tokens`) is shown next to Copy changes so you know the cost before pasting.
+
+---
+
 ## Try it on the demo app
 
 The repo includes a React + Vite + Tailwind fixture you can run locally:

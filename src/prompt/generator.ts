@@ -1,9 +1,12 @@
 /**
- * Converts a ChangeSet to the exact Markdown format defined in section 6.2.
+ * Converts a ChangeSet to the Markdown prompt format.
+ * Routes to Compact (default) or Detailed based on settings.
  * The output must stand alone — Claude Code needs no additional context.
  */
 
 import { type ChangeSet, type ElementRecord, type ChangeRecord } from '../schema';
+import { type RedlyneSettings, loadSettings } from '../engine/settings';
+import { generateCompact } from './compact';
 
 /** Sanitize page-derived strings to prevent prompt injection (SEC-1). */
 function sanitize(value: string, maxLen = 200): string {
@@ -141,7 +144,17 @@ function changesTable(changes: ChangeRecord[]): string {
   return rows.join('\n');
 }
 
-export function generateCopiedText(cs: ChangeSet): string {
+/**
+ * Generate the prompt. Pass optional settings; falls back to localStorage.
+ * Uses Compact format by default; falls back to Detailed when format = 'detailed'.
+ */
+export function generateCopiedText(cs: ChangeSet, settings?: RedlyneSettings): string {
+  const s = settings ?? loadSettings();
+  if (s.promptFormat === 'compact') return generateCompact(cs, s);
+  return generateDetailed(cs);
+}
+
+function generateDetailed(cs: ChangeSet): string {
   const env = cs.environment;
   const stackLabel = [env.framework, ...env.styling]
     .filter(Boolean)
