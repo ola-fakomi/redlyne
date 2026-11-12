@@ -2,7 +2,7 @@
  * Redline UI State Gallery
  * All states laid out statically — pointer-events disabled so nothing changes on interaction.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MoonLinearIcon, SunLinearIcon, AddCircleLinearIcon, CloseLinearIcon,
   AddLinearIcon, Grid2x2LinearIcon, MinusLinearIcon, EyeLinearIcon,
@@ -670,8 +670,201 @@ function Specimen({ label, children }: { label: string; children: React.ReactNod
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
-export default function App() {
+// ─── Personal Info card (Demo tab) ───────────────────────────────────────────
+function FormInput({ placeholder }: { placeholder: string }) {
   return (
+    <div
+      className="flex w-full px-4 py-3 rounded-xl text-sm text-gray-400"
+      style={{ background: '#f0f0f0' }}
+    >
+      {placeholder}
+    </div>
+  );
+}
+
+function PersonalInfoCard() {
+  return (
+    <div
+      className="flex flex-col w-full max-w-sm rounded-2xl p-6 gap-4"
+      style={{ background: '#ffffff', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+    >
+      {/* Personal Info section */}
+      <div className="flex flex-col gap-3">
+        <p className="text-lg font-bold text-gray-900">Personal Info</p>
+        <div className="flex flex-col gap-3">
+          <div className="flex"><FormInput placeholder="Full name" /></div>
+          <div className="flex"><FormInput placeholder="Phone number" /></div>
+        </div>
+      </div>
+
+      {/* Billing info section */}
+      <div className="flex flex-col gap-3">
+        <p className="text-base font-bold text-gray-900">Billing info</p>
+        <div className="flex flex-col gap-3">
+          <div className="flex"><FormInput placeholder="Credit card number" /></div>
+          <div className="flex gap-3">
+            <div className="flex flex-1"><FormInput placeholder="Expiry date" /></div>
+            <div className="flex flex-1"><FormInput placeholder="CVV" /></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Red action button */}
+      <button
+        className="flex w-full py-3 rounded-xl text-sm font-semibold text-white mt-2 justify-center"
+        style={{ background: '#ef4444' }}
+      >
+        Submit
+      </button>
+    </div>
+  );
+}
+
+// ─── Layer tree (Demo tab) ────────────────────────────────────────────────────
+type LayerNode = { id: string; name: string; children?: LayerNode[] };
+
+const CARD_TREE: LayerNode = {
+  id: 'card', name: 'Card',
+  children: [
+    { id: 'personal-title', name: 'Personal Info' },
+    {
+      id: 'personal-fields', name: 'Group',
+      children: [
+        { id: 'full-name', name: 'Full name' },
+        { id: 'phone', name: 'Phone number' },
+      ],
+    },
+    { id: 'billing-title', name: 'Billing info' },
+    {
+      id: 'billing-fields', name: 'Group',
+      children: [
+        { id: 'card-number', name: 'Credit card number' },
+        {
+          id: 'expiry-row', name: 'Row',
+          children: [
+            { id: 'expiry', name: 'Expiry date' },
+            { id: 'cvv', name: 'CVV' },
+          ],
+        },
+      ],
+    },
+    { id: 'submit-btn', name: 'Submit' },
+  ],
+};
+
+function LayerRow({
+  node, depth, expanded, selected, onToggle, onSelect,
+}: {
+  node: LayerNode; depth: number;
+  expanded: Set<string>; selected: string | null;
+  onToggle: (id: string) => void; onSelect: (id: string) => void;
+}) {
+  const hasChildren = !!(node.children?.length);
+  const isExpanded = expanded.has(node.id);
+  const isSelected = selected === node.id;
+
+  return (
+    <>
+      <div
+        onClick={() => { onSelect(node.id); if (hasChildren) onToggle(node.id); }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          paddingLeft: 8 + depth * 14, paddingRight: 8,
+          height: 26, cursor: 'pointer', borderRadius: 4,
+          background: isSelected ? 'rgba(59,130,246,0.22)' : 'transparent',
+          color: isSelected ? '#93c5fd' : '#c9cdd4',
+          fontSize: 11, userSelect: 'none',
+        }}
+        onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+        onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      >
+        <span style={{ width: 10, textAlign: 'center', color: '#6b7280', fontSize: 8, flexShrink: 0 }}>
+          {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
+        </span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+      </div>
+      {hasChildren && isExpanded && node.children!.map(child => (
+        <LayerRow key={child.id} node={child} depth={depth + 1}
+          expanded={expanded} selected={selected}
+          onToggle={onToggle} onSelect={onSelect} />
+      ))}
+    </>
+  );
+}
+
+function LayersPanel() {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['card', 'personal-fields', 'billing-fields', 'expiry-row']));
+  const [selected, setSelected] = useState<string | null>('card');
+
+  function toggle(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div style={{
+      width: 192, background: '#1c1c1e', borderRadius: 12,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+      display: 'flex', flexDirection: 'column', alignSelf: 'flex-start',
+      overflow: 'hidden',
+    }}>
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #2a2a2c' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+          Layers
+        </span>
+      </div>
+      <div style={{ padding: '4px 4px 4px' }}>
+        <LayerRow node={CARD_TREE} depth={0}
+          expanded={expanded} selected={selected}
+          onToggle={toggle} onSelect={setSelected} />
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [tab, setTab] = useState<'ui' | 'demo'>('ui');
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 2, padding: '12px 24px', background: '#1a1a1a', borderBottom: '1px solid #333' }}>
+        {(['ui', 'demo'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: '6px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              background: tab === t ? '#ffffff' : 'transparent',
+              color: tab === t ? '#111' : '#888',
+              transition: 'all 0.15s',
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Demo tab */}
+      {tab === 'demo' && (
+        <div style={{ flex: 1, minHeight: '100vh', background: '#e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 64 }}>
+          <PersonalInfoCard />
+        </div>
+      )}
+
+      {/* UI tab */}
+      {tab === 'ui' && (
     <div style={{ display: 'flex', gap: 48, padding: 64, minHeight: '100vh', background: '#888', flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
       {/* Dark column */}
@@ -773,6 +966,81 @@ export default function App() {
           </div>
         </Specimen>
       </Col>
+
+      {/* Layers panel states column */}
+      <Col>
+        {/* Layers — collapsed (trigger only, main panel alongside) */}
+        <Specimen label="Layers — collapsed (dark)">
+          <div className="redline-root" style={{ display: 'inline-flex', flexDirection: 'row', gap: 0, alignItems: 'flex-start' }}>
+            {/* Layers trigger */}
+            <div className="flex items-center justify-center rounded-l-[8px] bg-panel-outer text-panel-text-label"
+              style={{ width: 20, padding: '16px 0', marginTop: 32 }}>
+              <span className="font-panel text-[9px] font-semibold tracking-[0.08em] uppercase"
+                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                Layers
+              </span>
+            </div>
+            {/* Main panel (abbreviated) */}
+            <div className="font-panel bg-panel-outer rounded-[12px] p-1 gap-[1px] flex flex-col" style={{ width: 300 }}>
+              <Header dark />
+              <div className="bg-panel-bg rounded-[8px] overflow-hidden">
+                <TabsBar active="design" changeCount={0} />
+                <DesignEmpty />
+              </div>
+              <Footer state="none" dark />
+            </div>
+          </div>
+        </Specimen>
+
+        {/* Layers — open */}
+        <Specimen label="Layers — open (dark)">
+          <div className="redline-root" style={{ display: 'inline-flex', flexDirection: 'row', gap: 0, alignItems: 'flex-start' }}>
+            {/* Layers tree panel (trigger hidden in open state) */}
+            <div className="font-panel bg-panel-outer rounded-l-[12px] flex flex-col overflow-hidden" style={{ width: 150, maxHeight: 340, marginTop: 32 }}>
+              <div className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-panel-border">
+                <span className="text-[10px] font-semibold text-panel-text-label uppercase tracking-[0.07em]">Layers</span>
+                <div className="flex items-center justify-center w-4 h-4 rounded text-panel-text-label" style={{ fontSize: 9 }}>✕</div>
+              </div>
+              <div className="p-1 overflow-y-auto flex-1" style={{ fontSize: 11 }}>
+                {[
+                  { depth: 0, name: 'body', open: true },
+                  { depth: 1, name: '#root', open: true },
+                  { depth: 2, name: 'Card', open: true },
+                  { depth: 3, name: 'Personal Info', open: false },
+                  { depth: 3, name: 'Group', open: true },
+                  { depth: 4, name: 'Full name', open: false },
+                  { depth: 4, name: 'Phone number', open: false },
+                  { depth: 3, name: 'Billing info', open: false },
+                  { depth: 3, name: 'Group', open: true },
+                  { depth: 4, name: 'Credit card number', open: false },
+                  { depth: 4, name: 'Submit', open: false },
+                ].map((item, i) => (
+                  <div key={i}
+                    className={i === 4 ? 'text-panel-blue bg-panel-changed-bg rounded' : 'text-panel-text-secondary'}
+                    style={{ paddingLeft: 6 + item.depth * 10, paddingRight: 6, height: 22, display: 'flex', alignItems: 'center', gap: 4, borderRadius: 4 }}>
+                    <span style={{ width: 8, fontSize: 7, opacity: 0.5, flexShrink: 0, textAlign: 'center' }}>
+                      {item.open ? '▾' : item.depth < 4 ? '▸' : '·'}
+                    </span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Main panel */}
+            <div className="font-panel bg-panel-outer rounded-[12px] p-1 gap-[1px] flex flex-col" style={{ width: 300 }}>
+              <Header dark withDeselect />
+              <div className="bg-panel-bg rounded-[8px] overflow-hidden" style={{ maxHeight: 258, overflowY: 'auto' }}>
+                <TabsBar active="design" changeCount={0} />
+                <DesignWithElement />
+              </div>
+              <Footer state="active" dark />
+            </div>
+          </div>
+        </Specimen>
+      </Col>
+
+    </div>
+      )}
 
     </div>
   );
