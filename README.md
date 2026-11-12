@@ -22,14 +22,25 @@ Redlyne makes no network calls. Nothing leaves your browser except what you past
 
 ## Install (Developer mode)
 
-Until Redlyne is on the Chrome Web Store, install it manually:
-
-1. Download the latest `redlyne-vX.X.X.zip` from the [Releases](../../releases) page and unzip it.
+1. Download **[redlyne-v0.0.1.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.1)** and unzip it.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (toggle, top right).
-4. Click **Load unpacked** and select the unzipped folder.
+4. Click **Load unpacked** and select the unzipped `chrome-mv3` folder.
+
+The Redlyne icon appears in your toolbar. Click it (or press `Alt+Shift+D`) to toggle the panel on any page.
 
 The extension ID is stable — it will not change when you update.
+
+---
+
+## Works with Claude Code and Codex
+
+Redlyne is designed to work with any AI coding assistant that accepts text prompts.
+
+- **Claude Code** — paste the copied prompt directly into the Claude Code terminal. Claude reads the before/after values and applies the changes to your source files.
+- **OpenAI Codex** — the same prompt works in Codex. The structured Markdown format is readable by any model.
+
+The **Copy changes** button generates a self-contained prompt — no screenshots, no vague descriptions. Just paste and go.
 
 ---
 
