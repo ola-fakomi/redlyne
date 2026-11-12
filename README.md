@@ -2,8 +2,7 @@
 
 Edit any web page with Figma-style controls, then paste every change into Claude Code as one precise prompt.
 
-<!-- TODO: replace with demo GIF -->
-![Demo](design/demo.gif)
+<video src="design/redlyne-demo.mp4" autoplay loop muted playsinline></video>
 
 ---
 

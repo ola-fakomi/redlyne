@@ -10,10 +10,10 @@
  */
 
 /* ── Dark mode (default) ── */
-.redline-root {
+.redlyne-root {
   --panel-outer-bg:      #3c3c3c;
   --panel-bg:            #2c2c2c;
-  --panel-border:        #4f4f4f;
+  --panel-border:        #3a3a3a;
   --panel-text-primary:  #e5e5e5;
   --panel-text-secondary:#aaaaaa;
   --panel-text-label:    #8a8a8a;
@@ -35,10 +35,10 @@
 }
 
 /* ── Light mode override ── */
-.redline-root.light {
+.redlyne-root.light {
   --panel-outer-bg:      #ebebeb;
   --panel-bg:            #ffffff;
-  --panel-border:        #d4d4d4;
+  --panel-border:        #eeebeb;
   --panel-text-primary:  #111111;
   --panel-text-secondary:#5e5e5e;
   --panel-text-label:    #8a8a8a;
@@ -46,36 +46,36 @@
   --panel-input-bg:      #f0f0f0;
   --panel-section-bg:    #fafafa;
   --panel-row-hover:     #e8e8e8;
-  --panel-changed-bg:    #ffced0;
+  --panel-changed-bg:    rgba(11,153,255,0.15);
   --panel-revert-hover:  #fee2e2;
-  --panel-accent:        #6a0004;
-  --panel-accent-overlay:rgba(106,0,4,0.08);
+  --panel-accent:        #0b99ff;
+  --panel-accent-overlay:rgba(11,153,255,0.08);
 }
 
-.redline-root *,
-.redline-root *::before,
-.redline-root *::after {
+.redlyne-root *,
+.redlyne-root *::before,
+.redlyne-root *::after {
   box-sizing: border-box;
 }
 
 /* Scrollbar — thin and unobtrusive */
-.redline-root ::-webkit-scrollbar {
+.redlyne-root ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
-.redline-root ::-webkit-scrollbar-track {
+.redlyne-root ::-webkit-scrollbar-track {
   background: transparent;
 }
-.redline-root ::-webkit-scrollbar-thumb {
+.redlyne-root ::-webkit-scrollbar-thumb {
   background: var(--panel-border);
   border-radius: 2px;
 }
-.redline-root ::-webkit-scrollbar-thumb:hover {
+.redlyne-root ::-webkit-scrollbar-thumb:hover {
   background: var(--panel-text-label);
 }
 
 /* Select dropdowns use system UI */
-.redline-root select {
+.redlyne-root select {
   font-family: inherit;
   font-size: 11px;
   line-height: 1;
@@ -85,11 +85,11 @@
 }
 
 /* Prevent transition flash when host page has global transitions */
-.redline-root * {
+.redlyne-root * {
   transition-property: none !important;
 }
-.redline-root button,
-.redline-root input {
+.redlyne-root button,
+.redlyne-root input {
   transition-property: color, background-color, border-color, box-shadow !important;
   transition-duration: 80ms !important;
 }

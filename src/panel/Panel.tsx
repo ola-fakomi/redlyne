@@ -33,6 +33,90 @@ import { generateCopiedText } from '@/prompt/generator';
 import { type ChangeSet } from '@/schema';
 import { cn } from '@/lib/utils';
 
+// ── Layer tree ─────────────────────────────────────────────────────────────
+interface LayerNodeData {
+  id: string;
+  el: Element;
+  name: string;
+  children: LayerNodeData[];
+}
+
+const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'meta', 'link', 'head', 'title', 'svg', 'path', 'g']);
+let _layerIdCount = 0;
+
+function getLayerName(el: Element): string {
+  if (el.id) return `#${el.id}`;
+  const aria = el.getAttribute('aria-label') || el.getAttribute('placeholder');
+  if (aria) return aria.slice(0, 32);
+  const testId = el.getAttribute('data-testid');
+  if (testId) return testId;
+  const text = Array.from(el.childNodes)
+    .filter(n => n.nodeType === Node.TEXT_NODE)
+    .map(n => n.textContent?.trim())
+    .filter(Boolean)
+    .join(' ');
+  if (text && text.length <= 36) return text;
+  return el.tagName.toLowerCase();
+}
+
+// Returns the ancestor id path (root → target) if found, else null
+function findPathToEl(node: LayerNodeData, el: Element): string[] | null {
+  if (node.el === el) return [node.id];
+  for (const child of node.children) {
+    const path = findPathToEl(child, el);
+    if (path) return [node.id, ...path];
+  }
+  return null;
+}
+
+function buildLayerTree(el: Element, depth = 0): LayerNodeData | null {
+  const tag = el.tagName.toLowerCase();
+  if (SKIP_TAGS.has(tag) || tag.includes('-')) return null; // skip shadow hosts
+  if ((el as HTMLElement).hidden) return null;
+  const children = depth < 15
+    ? Array.from(el.children)
+        .slice(0, 30)
+        .map(c => buildLayerTree(c, depth + 1))
+        .filter((n): n is LayerNodeData => n !== null)
+    : [];
+  return { id: `l${++_layerIdCount}`, el, name: getLayerName(el), children };
+}
+
+function LayerTreeRow({
+  node, depth, expanded, selectedId, onToggle, onSelect,
+}: {
+  node: LayerNodeData; depth: number; expanded: Set<string>;
+  selectedId: string | null;
+  onToggle: (id: string) => void;
+  onSelect: (id: string, el: Element) => void;
+}) {
+  const hasChildren = node.children.length > 0;
+  const isExp = expanded.has(node.id);
+  const isSel = selectedId === node.id;
+  return (
+    <>
+      <div
+        onClick={() => { onSelect(node.id, node.el); if (hasChildren) onToggle(node.id); }}
+        className={cn(
+          'flex items-center gap-1 cursor-pointer rounded text-[11px]',
+          isSel ? 'bg-panel-changed-bg text-panel-blue' : 'text-panel-text-secondary hover:bg-panel-row-hover',
+        )}
+        style={{ paddingLeft: 6 + depth * 10, paddingRight: 6, height: 22 }}
+      >
+        <span style={{ width: 8, fontSize: 7, opacity: 0.5, flexShrink: 0, textAlign: 'center' }}>
+          {hasChildren ? (isExp ? '▾' : '▸') : '·'}
+        </span>
+        <span className="truncate">{node.name}</span>
+      </div>
+      {hasChildren && isExp && node.children.map(c => (
+        <LayerTreeRow key={c.id} node={c} depth={depth + 1}
+          expanded={expanded} selectedId={selectedId}
+          onToggle={onToggle} onSelect={onSelect} />
+      ))}
+    </>
+  );
+}
+
 const EXT_VERSION: string = (() => {
   try { return (globalThis as any).chrome?.runtime?.getManifest?.()?.version ?? '0.0.1'; }
   catch { return '0.0.1'; }
@@ -126,6 +210,10 @@ export function Panel({ shadowHost }: Props) {
   const [changeSet, setChangeSet]       = useState<ChangeSet>(getChangeSet());
   const [copyLabel, setCopyLabel]       = useState<'default' | 'copied'>('default');
   const [tab, setTab]                   = useState('design');
+  const [layersOpen, setLayersOpen]     = useState(false);
+  const [layerTree, setLayerTree]       = useState<LayerNodeData | null>(null);
+  const [layerExpanded, setLayerExpanded] = useState<Set<string>>(new Set());
+  const [layerSelected, setLayerSelected] = useState<string | null>(null);
   const [isDark, setIsDark]             = useState(() => {
     try {
       // Migrate theme preference from old key (pre-rename)
@@ -150,6 +238,17 @@ export function Panel({ shadowHost }: Props) {
   const dragRef = useRef<{ startX: number; startRight: number; startTop: number; startY: number } | null>(null);
 
   const refreshChanges = useCallback(() => { setChangeSet({ ...getChangeSet() }); }, []);
+
+  // Build layer tree rooted at selectedEl whenever selection or panel changes
+  useEffect(() => {
+    if (!layersOpen) return;
+    if (!selectedEl) { setLayersOpen(false); return; }
+    _layerIdCount = 0;
+    const tree = buildLayerTree(selectedEl);
+    setLayerTree(tree);
+    setLayerSelected(tree?.id ?? null);
+    setLayerExpanded(tree ? new Set([tree.id]) : new Set());
+  }, [layersOpen, selectedEl]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -298,11 +397,57 @@ export function Panel({ shadowHost }: Props) {
       {/* Page-level highlight overlays */}
       <SelectionOverlay hoveredEl={hoveredEl} selectedEl={selectedEl} />
 
-      {/* ── Outer container ─────────────────────────────────── */}
-      <div
-        style={{ position: 'fixed', right: pos.right, top: pos.top, zIndex: 2147483647, pointerEvents: 'all' }}
-        className="w-[300px] flex flex-col rounded-[12px] font-panel select-none max-h-[85vh] bg-panel-outer p-1 gap-[1px]"
-      >
+      {/* ── Outer wrapper (flex-row: trigger + tree + main panel) ── */}
+      <div style={{ position: 'fixed', right: pos.right, top: pos.top, zIndex: 2147483647, pointerEvents: 'all', display: 'flex', flexDirection: 'row', gap: 0, alignItems: 'flex-start' }}>
+
+        {/* ── Layers trigger (only when closed) ──────────── */}
+        {!layersOpen && (
+          <button
+            onClick={() => setLayersOpen(l => !l)}
+            className="flex items-center justify-center rounded-l-[8px] font-panel select-none border-0 cursor-pointer bg-panel-outer text-panel-text-label"
+            style={{ width: 20, padding: '16px 0', marginTop: 32 }}
+            title="Toggle layers"
+          >
+            <span className="text-[9px] font-semibold tracking-[0.08em] uppercase" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+              Layers
+            </span>
+          </button>
+        )}
+
+        {/* ── Layers tree panel (only when open) ──────────── */}
+        {layersOpen && (
+          <div className="flex flex-col rounded-l-[12px] font-panel select-none bg-panel-outer overflow-hidden" style={{ width: 150, maxHeight: '85vh', marginTop: 32 }}>
+            <div className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-panel-border">
+              <span className="text-[10px] font-semibold text-panel-text-label uppercase tracking-[0.07em]">Layers</span>
+              <button
+                onClick={() => setLayersOpen(false)}
+                className="flex items-center justify-center w-4 h-4 rounded text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover border-0 cursor-pointer bg-transparent"
+                title="Close layers"
+              >
+                <span style={{ fontSize: 9, lineHeight: 1 }}>✕</span>
+              </button>
+            </div>
+            {layerTree ? (
+              <div className="overflow-y-auto p-1 flex-1 min-h-0">
+                <LayerTreeRow
+                  node={layerTree} depth={0}
+                  expanded={layerExpanded} selectedId={layerSelected}
+                  onToggle={id => setLayerExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
+                  onSelect={(id, el) => { setSelectedEl(el); setTab('design'); setIsSelectMode(false); }}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center flex-1 p-3 text-center text-[10px] text-panel-text-label leading-relaxed">
+                Select an element on the page to explore its layers
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Main panel ──────────────────────────────────── */}
+        <div
+          className="w-[300px] flex flex-col rounded-[12px] font-panel select-none max-h-[85vh] bg-panel-outer p-1 gap-[1px]"
+        >
 
         {/* ── SECTION 1: Header / Logo ─────────────────────── */}
         <div
@@ -413,7 +558,8 @@ export function Panel({ shadowHost }: Props) {
           )}
         </div>
 
-      </div>
+        </div> {/* end main panel */}
+      </div> {/* end flex-row wrapper */}
     </>
   );
 }

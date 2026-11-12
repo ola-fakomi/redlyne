@@ -37,10 +37,18 @@ export default defineContentScript({
         position: 'overlay',
         zIndex: 2147483647,
         onMount(container, shadow, shadowHost) {
-          // Inject Tailwind + panel CSS into the shadow root
-          const styleEl = document.createElement('style');
-          styleEl.textContent = panelStyles;
-          shadow.prepend(styleEl);
+          // Inject Tailwind + panel CSS via adoptedStyleSheets (most reliable for shadow DOM)
+          try {
+            const sheet = new CSSStyleSheet();
+            sheet.replaceSync(panelStyles);
+            shadow.adoptedStyleSheets = [sheet];
+          } catch {
+            // Fallback for older Chrome versions
+            const styleEl = document.createElement('style');
+            styleEl.textContent = panelStyles;
+            const head = shadow.querySelector('head') ?? shadow;
+            head.appendChild(styleEl);
+          }
 
           // Add base class so our CSS rules apply
           container.className = 'redlyne-root';
