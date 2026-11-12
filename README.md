@@ -22,10 +22,10 @@ Redlyne makes no network calls. Nothing leaves your browser except what you past
 
 ## Install (Developer mode)
 
-1. Download **[redlyne-v0.0.2.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.2)** and unzip it.
+1. Download **[redlyne-v0.0.1.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.1)** and unzip it.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (toggle, top right).
-4. Click **Load unpacked** and select the unzipped `chrome-mv3` folder.
+4. Click **Load unpacked** and select the unzipped `redlyne-v0.0.1` folder.
 
 The Redlyne icon appears in your toolbar. Click it (or press `Alt+Shift+D`) to toggle the panel on any page.
 
