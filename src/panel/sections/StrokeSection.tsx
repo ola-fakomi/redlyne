@@ -33,7 +33,8 @@ function colorToHex(color: string): string {
 }
 
 function extractOpacity(color: string): number {
-  const m = color.match(/rgba?\([^)]+,\s*([\d.]+)\)/);
+  // Only match rgba (4 values) — rgb has no alpha channel
+  const m = color.match(/rgba\([^)]+,\s*([\d.]+)\s*\)/);
   return m ? Math.round(parseFloat(m[1]) * 100) : 100;
 }
 

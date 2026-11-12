@@ -1,49 +1,28 @@
 import React from 'react';
+import { AlignLeftLinearIcon, AlignHorizontalCenterLinearIcon, AlignRightLinearIcon, AlignHorizontalSpacingLinearIcon } from '@solar-icons/react';
 import { NumericField } from '../controls/NumericField';
 import { cn } from '@/lib/utils';
 
 interface Props {
+  el: Element;
   get: (prop: string) => string;
   getOrig: (prop: string) => string | undefined;
   set: (prop: string, val: string, desc: string) => void;
+  onTextChange: (text: string) => void;
 }
 
 const WEIGHTS = ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
 
 const TEXT_ALIGNS = [
-  { value: 'left',    icon: (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <line x1="1" y1="3" x2="11" y2="3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="6" x2="8"  y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="9" x2="10" y2="9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )},
-  { value: 'center',  icon: (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <line x1="1"   y1="3" x2="11"  y2="3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="2.5" y1="6" x2="9.5" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1"   y1="9" x2="11"  y2="9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )},
-  { value: 'right',   icon: (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <line x1="1" y1="3"  x2="11" y2="3"  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="4" y1="6"  x2="11" y2="6"  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="2" y1="9"  x2="11" y2="9"  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )},
-  { value: 'justify', icon: (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <line x1="1" y1="3" x2="11" y2="3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )},
+  { value: 'left',    icon: <AlignLeftLinearIcon size={12} /> },
+  { value: 'center',  icon: <AlignHorizontalCenterLinearIcon size={12} /> },
+  { value: 'right',   icon: <AlignRightLinearIcon size={12} /> },
+  { value: 'justify', icon: <AlignHorizontalSpacingLinearIcon size={12} /> },
 ];
 
-const selectCls = 'flex-1 h-7 rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary px-1.5 focus:outline-none focus:ring-1 focus:ring-panel-blue';
+const selectCls = 'flex-1 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary px-1.5 focus:outline-none focus:ring-1 focus:ring-panel-blue';
 
-export function TypographySection({ get, getOrig, set }: Props) {
+export function TypographySection({ el, get, getOrig, set, onTextChange }: Props) {
   const family    = get('font-family');
   const size      = get('font-size');
   const weight    = get('font-weight');
@@ -51,8 +30,24 @@ export function TypographySection({ get, getOrig, set }: Props) {
   const letSp     = get('letter-spacing');
   const textAlign = get('text-align');
 
+  const textContent = Array.from(el.childNodes)
+    .filter(n => n.nodeType === Node.TEXT_NODE)
+    .map(n => n.textContent ?? '')
+    .join('') || el.textContent?.trim() || '';
+
   return (
     <div className="px-3 pb-3 pt-1 space-y-1.5">
+      {/* Text content */}
+      <textarea
+        key={textContent}
+        defaultValue={textContent}
+        rows={2}
+        onBlur={e => onTextChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
+        placeholder="Text content…"
+        className="w-full px-2 py-1.5 rounded-md border border-panel-border bg-panel-input-bg text-[11px] font-panel text-panel-text-primary focus:outline-none focus:ring-1 focus:ring-panel-blue resize-none leading-relaxed placeholder:text-panel-text-label"
+      />
+
       {/* Font family */}
       <input
         value={family}

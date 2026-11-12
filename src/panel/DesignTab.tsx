@@ -223,7 +223,7 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
                 onChange={v => set('transform', `rotate(${parseFloat(v) || 0}deg)`, 'Rotate element')}
               />
             </div>
-            <button title="Reset rotation" onClick={() => set('transform', 'none', 'Reset rotation')}
+            <button title="Rotate 90° clockwise" onClick={() => set('transform', `rotate(${((elRotation + 90) % 360)}deg)`, 'Rotate 90° clockwise')}
               className="flex items-center justify-center w-6 h-[22px] rounded-md border border-panel-border bg-panel-input-bg text-panel-text-label hover:text-panel-text-primary hover:bg-panel-row-hover shrink-0">
               <RefreshLinearIcon size={12} />
             </button>
@@ -323,6 +323,37 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
           </button>
         </div>
 
+        {/* Individual corner radius fields */}
+        {(cornerExpanded || !radiusAllSame) && (
+          <div className="grid grid-cols-2 gap-1">
+            {([
+              { prop: 'border-top-left-radius',     val: tl, desc: 'Change top-left radius',     Icon: CornerTLIcon },
+              { prop: 'border-top-right-radius',    val: tr, desc: 'Change top-right radius',    Icon: CornerTRIcon },
+              { prop: 'border-bottom-left-radius',  val: bl, desc: 'Change bottom-left radius',  Icon: CornerBLIcon },
+              { prop: 'border-bottom-right-radius', val: br, desc: 'Change bottom-right radius', Icon: CornerBRIcon },
+            ] as const).map(({ prop, val, desc, Icon }) => {
+              const orig = getOrig(prop);
+              const isChanged = orig !== undefined && val !== orig;
+              return (
+                <div key={prop} className={cn(
+                  'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg',
+                  isChanged ? 'border-panel-blue' : 'border-panel-border',
+                )}>
+                  <Icon />
+                  <input
+                    type="text"
+                    defaultValue={Math.round(parseFloat(val)) || 0}
+                    key={val}
+                    onBlur={e => set(prop, `${parseFloat(e.target.value) || 0}px`, desc)}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Blend mode */}
         <div className="space-y-1">
           <span className="text-[10px] text-panel-text-label block">Blend mode</span>
@@ -355,44 +386,29 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
           </div>
         </div>
 
-        {/* Individual corner radius fields */}
-        {(cornerExpanded || !radiusAllSame) && (
-          <div className="grid grid-cols-2 gap-1">
-            {([
-              { prop: 'border-top-left-radius',     val: tl, desc: 'Change top-left radius',     Icon: CornerTLIcon },
-              { prop: 'border-top-right-radius',    val: tr, desc: 'Change top-right radius',    Icon: CornerTRIcon },
-              { prop: 'border-bottom-left-radius',  val: bl, desc: 'Change bottom-left radius',  Icon: CornerBLIcon },
-              { prop: 'border-bottom-right-radius', val: br, desc: 'Change bottom-right radius', Icon: CornerBRIcon },
-            ] as const).map(({ prop, val, desc, Icon }) => {
-              const orig = getOrig(prop);
-              const isChanged = orig !== undefined && val !== orig;
-              return (
-                <div key={prop} className={cn(
-                  'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg',
-                  isChanged ? 'border-panel-blue' : 'border-panel-border',
-                )}>
-                  <Icon />
-                  <input
-                    type="text"
-                    defaultValue={Math.round(parseFloat(val)) || 0}
-                    key={val}
-                    onBlur={e => set(prop, `${parseFloat(e.target.value) || 0}px`, desc)}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-
       </div>
 
       {/* ── Typography ─────────────────────── */}
       {isTextEl && (
         <>
           <SectionHeader title="Typography" />
-          <TypographySection get={get} getOrig={getOrig} set={set} />
+          <TypographySection
+            el={el}
+            get={get}
+            getOrig={getOrig}
+            set={set}
+            onTextChange={text => {
+              // Update text nodes directly; replace first text node or set textContent
+              const textNodes = Array.from(el.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+              if (textNodes.length > 0) {
+                textNodes[0].textContent = text;
+                textNodes.slice(1).forEach(n => n.parentNode?.removeChild(n));
+              } else {
+                el.textContent = text;
+              }
+              onChangeRecorded();
+            }}
+          />
         </>
       )}
 

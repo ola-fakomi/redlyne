@@ -55,20 +55,15 @@ export function NumericField({ label, value, original, disabled, onChange }: Num
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') { commit(draft); }
     if (e.key === 'Escape') { setDraft(stripUnit(value)); setEditing(false); }
-    if (e.key === 'ArrowUp') {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const n = parseFloat(draft) || 0;
+      const dir = e.key === 'ArrowUp' ? 1 : -1;
       const step = e.shiftKey ? 10 : 1;
-      const next = String(n + step);
+      // Read from the live DOM value to avoid stale React state
+      const n = parseFloat(e.currentTarget.value) || 0;
+      const next = String(Math.round((n + dir * step) * 100) / 100);
       setDraft(next);
-      onChange(withUnit(next, value));
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const n = parseFloat(draft) || 0;
-      const step = e.shiftKey ? 10 : 1;
-      const next = String(n - step);
-      setDraft(next);
+      setEditing(true);
       onChange(withUnit(next, value));
     }
   }
@@ -91,6 +86,8 @@ export function NumericField({ label, value, original, disabled, onChange }: Num
         onBlur={() => commit(draft)}
         onChange={e => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
+        onMouseEnter={() => { if (!disabled) inputRef.current?.focus(); }}
+        onMouseLeave={() => { if (!editing) inputRef.current?.blur(); }}
         className={cn(
           'w-full h-[22px] pl-5 rounded-md border border-panel-border bg-panel-input-bg',
           'text-[11px] font-panel text-panel-text-primary text-right',
