@@ -1,5 +1,7 @@
 node_modules/
-.output/
+output/
 .wxt/
 dist/
 *.local
+.DS_Store
+.output/

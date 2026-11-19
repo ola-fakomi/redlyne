@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { SelectionOverlay } from './SelectionOverlay';
 import { DesignTab } from './DesignTab';
+import { CodeTab } from './CodeTab';
 import { ChangesTab } from './ChangesTab';
 import {
   getChangeSet,
@@ -717,6 +718,7 @@ export function Panel({ shadowHost, onClose }: Props) {
           <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0 rounded-none">
               <TabsTrigger value="design">Design</TabsTrigger>
+              <TabsTrigger value="code">Code</TabsTrigger>
               <TabsTrigger value="changes">
                 Changes
                 {total > 0 && (
@@ -733,6 +735,17 @@ export function Panel({ shadowHost, onClose }: Props) {
                   <DesignErrorBoundary onReset={() => setSelectedEl(null)}>
                     <DesignTab el={selectedEl} onChangeRecorded={refreshChanges} />
                   </DesignErrorBoundary>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-32 gap-2 text-panel-text-label">
+                    <PlusCircleIcon />
+                    <span className="text-[11px]">Click or Press <kbd className="px-1 py-px rounded border border-panel-border bg-panel-input-bg font-mono text-[10px] text-panel-text-primary not-italic">v</kbd> to select an element</span>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="code" className="mt-0">
+                {selectedEl ? (
+                  <CodeTab el={selectedEl} onChangeRecorded={refreshChanges} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-32 gap-2 text-panel-text-label">
                     <PlusCircleIcon />

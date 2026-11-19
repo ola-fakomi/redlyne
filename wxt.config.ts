@@ -34,5 +34,6 @@ export default defineConfig({
     },
   },
   srcDir: 'src',
+  outDir: 'output',
   imports: false,
 });

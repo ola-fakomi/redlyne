@@ -32,7 +32,7 @@ jobs:
 
       - name: Zip extension
         run: |
-          cd .output/chrome-mv3
+          cd output/chrome-mv3
           zip -r ../../redlyne-${{ github.ref_name }}.zip .
 
       - name: Create GitHub release

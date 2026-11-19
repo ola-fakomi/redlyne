@@ -20,12 +20,16 @@ Redlyne makes no network calls. Nothing leaves your browser except what you past
 
 ---
 
-## Install (Developer mode)
+## Install
 
-1. Download **[redlyne-v0.0.1.zip](https://github.com/ola-fakomi/redlyne/releases/tag/v0.0.1)** and unzip it.
+1. **Chrome Web Store** (recommended — listing pending review): search "Redlyne" once live.
+
+Or install manually:
+
+1. Download **[redlyne-v0.0.2.zip](https://github.com/ola-fakomi/redlyne/releases/latest)** and unzip it.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (toggle, top right).
-4. Click **Load unpacked** and select the unzipped `redlyne-v0.0.1` folder.
+4. Click **Load unpacked** and select the unzipped `unzipped folder.
 
 The Redlyne icon appears in your toolbar. Click it (or press `Alt+Shift+D`) to toggle the panel on any page.
 
@@ -116,7 +120,7 @@ Open `http://localhost:5173` in Chrome (with Redlyne loaded), then:
 ```bash
 pnpm install
 pnpm build
-# Load .output/chrome-mv3 as an unpacked extension (see Install above)
+# Load output/chrome-mv3 as an unpacked extension (see Install above)
 ```
 
 **Watch mode** (live-rebuilds on save):
@@ -166,10 +170,9 @@ pnpm test
 
 ## Roadmap
 
-- Chrome Web Store listing for one-click installs.
-- Support for all URLs, not just localhost.
 - Responsive editing (per-breakpoint changes).
 - Variable and token picker.
+- Source-map integration for higher-confidence file locations.
 
 ---
 

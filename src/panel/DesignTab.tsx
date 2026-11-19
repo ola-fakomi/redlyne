@@ -17,6 +17,7 @@ import { AutoLayoutSection } from './sections/AutoLayoutSection';
 import { EffectsSection } from './sections/EffectsSection';
 import { SizeSection } from './sections/SizeSection';
 import { FillSection } from './sections/FillSection';
+import { PseudoFillSection } from './sections/PseudoFillSection';
 import { TypographySection } from './sections/TypographySection';
 import { StrokeSection } from './sections/StrokeSection';
 import { NumericField } from './controls/NumericField';
@@ -39,10 +40,12 @@ function makeAccessors(el: Element) {
     return origCache[prop];
   }
 
-  function set(prop: string, val: string, desc: string) {
+  // promptVal: optional override for what gets stored in the change tracker
+  // (use when the CSS value is not meaningful for the prompt, e.g. base64 image data)
+  function set(prop: string, val: string, desc: string, promptVal?: string) {
     if (!origCache[prop]) origCache[prop] = get(prop);
     applyPreview(el, prop, val);
-    recordChange(el, prop, val, desc || describeChange(prop, origCache[prop] ?? '', val));
+    recordChange(el, prop, promptVal ?? val, desc || describeChange(prop, origCache[prop] ?? '', val));
   }
 
   return { get, getOrig, set };
@@ -107,8 +110,8 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
   const [cornerExpanded, setCornerExpanded] = useState(false);
   const { get, getOrig, set: rawSet } = React.useMemo(() => makeAccessors(el), [el]);
 
-  function set(prop: string, val: string, desc: string) {
-    rawSet(prop, val, desc);
+  function set(prop: string, val: string, desc: string, promptVal?: string) {
+    rawSet(prop, val, desc, promptVal);
     setVersion(v => v + 1);
     onChangeRecorded();
   }
@@ -121,7 +124,16 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
 
   const label = readLabel(el);
 
-  // Position (read-only)
+  // CSS position + offsets
+  const cssPosition = get('position');                        // static|relative|absolute|fixed|sticky
+  const isPositioned = cssPosition === 'absolute' || cssPosition === 'fixed' || cssPosition === 'sticky';
+  const posTop    = get('top');
+  const posRight  = get('right');
+  const posBottom = get('bottom');
+  const posLeft   = get('left');
+  const zIndex    = get('z-index');
+
+  // Bounding-box position (read-only)
   const rect = el.getBoundingClientRect();
   const elX  = Math.round(rect.left + window.scrollX);
   const elY  = Math.round(rect.top  + window.scrollY);
@@ -160,14 +172,99 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
     <div className="flex flex-col text-[11px] font-panel">
 
       {/* Element label row */}
-      <div className="flex items-center gap-1.5 px-3 h-7 border-b border-panel-border text-[10px] text-panel-text-secondary truncate shrink-0">
-        <span className="text-panel-text-label font-semibold">&lt;{tag}&gt;</span>
-        <span className="truncate">{label}</span>
+      <div className="flex items-center gap-1.5 px-3 h-7 border-b border-panel-border text-[10px] text-panel-text-secondary shrink-0 overflow-hidden">
+        <span className="text-panel-text-label font-semibold shrink-0">&lt;{tag}&gt;</span>
+        <span className="truncate flex-1">{label}</span>
+        {/* Position badge — prominent warning when element is taken out of flow */}
+        {isPositioned && (
+          <span className={cn(
+            'shrink-0 px-1.5 py-px rounded text-[9px] font-semibold border',
+            cssPosition === 'absolute' && 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+            cssPosition === 'fixed'    && 'bg-red-500/15 text-red-400 border-red-500/30',
+            cssPosition === 'sticky'   && 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+          )}>
+            {cssPosition}
+          </span>
+        )}
       </div>
 
       {/* ── Position ───────────────────────── */}
       <SectionHeader title="Position" />
       <div className="px-3 pb-2 pt-1 space-y-2">
+
+        {/* CSS position + z-index row */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-panel-text-label block">Type</span>
+          <div className="flex gap-1">
+            {/* position dropdown */}
+            <div className={cn(
+              'relative h-[22px] rounded-md border bg-panel-input-bg flex-1',
+              getOrig('position') !== undefined ? 'border-panel-blue' : 'border-panel-border',
+            )}>
+              <select
+                value={cssPosition || 'static'}
+                onChange={e => set('position', e.target.value, `Set position to ${e.target.value}`)}
+                style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                className="absolute inset-0 w-full h-full pl-1.5 pr-5 bg-transparent text-[11px] text-panel-text-primary focus:outline-none cursor-pointer"
+              >
+                {['static', 'relative', 'absolute', 'fixed', 'sticky'].map(v => (
+                  <option key={v} value={v} style={{ background: 'var(--panel-bg,#1e1e1e)', color: 'inherit' }}>
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-0 top-0 h-full flex items-center pr-1.5 pointer-events-none">
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-panel-text-label">
+                  <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            {/* z-index */}
+            <div className={cn(
+              'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg w-16 shrink-0',
+              getOrig('z-index') !== undefined ? 'border-panel-blue' : 'border-panel-border',
+            )}>
+              <span className="text-[9px] text-panel-text-label select-none shrink-0">Z</span>
+              <input
+                type="text" defaultValue={zIndex} key={zIndex}
+                onBlur={e => set('z-index', e.target.value.trim() || 'auto', 'Change z-index')}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* T / R / B / L offsets — only when positioned (absolute / fixed / sticky) */}
+        {isPositioned && (
+          <div className="space-y-1">
+            <span className="text-[10px] text-panel-text-label block">Offsets</span>
+            <div className="grid grid-cols-2 gap-1">
+              {([
+                { label: 'T', prop: 'top',    val: posTop,    desc: 'Change top offset'    },
+                { label: 'R', prop: 'right',  val: posRight,  desc: 'Change right offset'  },
+                { label: 'B', prop: 'bottom', val: posBottom, desc: 'Change bottom offset' },
+                { label: 'L', prop: 'left',   val: posLeft,   desc: 'Change left offset'   },
+              ] as const).map(({ label: lbl, prop, val, desc }) => {
+                const isChanged = getOrig(prop) !== undefined;
+                return (
+                  <div key={prop} className={cn(
+                    'flex items-center h-[22px] px-1.5 rounded-md border gap-1 bg-panel-input-bg',
+                    isChanged ? 'border-panel-blue' : 'border-panel-border',
+                  )}>
+                    <span className="text-[10px] text-panel-text-label select-none shrink-0">{lbl}</span>
+                    <input
+                      type="text" defaultValue={val} key={val}
+                      onBlur={e => set(prop, e.target.value.trim() || 'auto', desc)}
+                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Alignment */}
         <div className="space-y-1">
@@ -202,9 +299,9 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
           </div>
         </div>
 
-        {/* Position X/Y */}
+        {/* Bounding-box X/Y (read-only) */}
         <div className="space-y-1">
-          <span className="text-[10px] text-panel-text-label block">Position</span>
+          <span className="text-[10px] text-panel-text-label block">On page</span>
           <div className="grid grid-cols-2 gap-1">
             <NumericField label="X" value={`${elX}px`} disabled onChange={() => {}} />
             <NumericField label="Y" value={`${elY}px`} disabled onChange={() => {}} />
@@ -240,8 +337,30 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
 
       </div>
 
-      {/* ── Layout ──────────────────────────── */}
-      <SectionHeader title="Layout" />
+      {/* ── Layout / Auto layout ─────────────── */}
+      <div className="flex items-center justify-between px-3 h-10 border-t border-panel-border shrink-0">
+        <span className="text-[13px] font-semibold text-panel-text-primary">
+          {isFlex ? 'Auto layout' : 'Layout'}
+        </span>
+        <button
+          title={isFlex ? 'Remove auto layout' : 'Add auto layout (flex)'}
+          onClick={() => set('display', isFlex ? 'block' : 'flex', isFlex ? 'Remove auto layout' : 'Add auto layout')}
+          className={cn(
+            'flex items-center justify-center w-5 h-5 rounded border shrink-0 transition-colors',
+            isFlex
+              ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+              : 'border-panel-border bg-panel-input-bg text-panel-text-label hover:bg-panel-row-hover',
+          )}
+        >
+          {/* 2×2 grid icon = auto layout */}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <rect x="1" y="1" width="3.5" height="3.5" rx="0.5" stroke="currentColor" strokeWidth="0.9"/>
+            <rect x="5.5" y="1" width="3.5" height="3.5" rx="0.5" stroke="currentColor" strokeWidth="0.9"/>
+            <rect x="1" y="5.5" width="3.5" height="3.5" rx="0.5" stroke="currentColor" strokeWidth="0.9"/>
+            <rect x="5.5" y="5.5" width="3.5" height="3.5" rx="0.5" stroke="currentColor" strokeWidth="0.9"/>
+          </svg>
+        </button>
+      </div>
       {isFlex ? (
         <AutoLayoutSection {...sectionProps} />
       ) : (
@@ -415,6 +534,10 @@ export function DesignTab({ el, onChangeRecorded }: Props) {
       {/* ── Fill ───────────────────────────── */}
       <SectionHeader title="Fill" onAdd={() => {}} />
       <FillSection {...sectionProps} />
+      <PseudoFillSection
+        el={el}
+        onChangeApplied={() => { setVersion(v => v + 1); onChangeRecorded(); }}
+      />
 
       {/* ── Stroke ─────────────────────────── */}
       <SectionHeader title="Stroke" onAdd={() => {}} />

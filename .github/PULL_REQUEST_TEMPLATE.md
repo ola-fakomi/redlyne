@@ -5,7 +5,7 @@
 ## How to test
 
 1. Build: `pnpm build`
-2. Load `.output/chrome-mv3` in Chrome.
+2. Load `output/chrome-mv3` in Chrome.
 3. Run the fixture: `cd fixtures/react-vite-tailwind && pnpm dev`
 4. ...
 

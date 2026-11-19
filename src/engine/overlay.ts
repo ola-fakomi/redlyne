@@ -64,6 +64,48 @@ export function removePreview(el: Element, property: string): void {
   }
 }
 
+/** Apply a CSS property preview to a pseudo-element (::before or ::after). */
+export function applyPseudoPreview(
+  el: Element,
+  pseudo: '::before' | '::after',
+  property: string,
+  value: string,
+): void {
+  const id = ensureId(el);
+  const s = getSheet();
+  const selector = `[data-redlyne-id="${id}"]${pseudo}`;
+  const rules = Array.from(s.cssRules);
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i] as CSSStyleRule;
+    if (rule.selectorText === selector) {
+      rule.style.setProperty(property, value, 'important');
+      return;
+    }
+  }
+  s.insertRule(`${selector} { ${property}: ${value} !important; }`, s.cssRules.length);
+}
+
+/** Remove a CSS property preview from a pseudo-element. */
+export function removePseudoPreview(
+  el: Element,
+  pseudo: '::before' | '::after',
+  property: string,
+): void {
+  const id = el.getAttribute('data-redlyne-id');
+  if (!id) return;
+  const s = getSheet();
+  const selector = `[data-redlyne-id="${id}"]${pseudo}`;
+  const rules = Array.from(s.cssRules);
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i] as CSSStyleRule;
+    if (rule.selectorText === selector) {
+      rule.style.removeProperty(property);
+      if (rule.style.length === 0) s.deleteRule(i);
+      return;
+    }
+  }
+}
+
 /** Remove all preview rules and data-redlyne-id attributes from the page. */
 export function clearAllPreviews(): void {
   if (sheet) {

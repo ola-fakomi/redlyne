@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { EyeLinearIcon, EyeOffLinearIcon, MinusLinearIcon } from '@solar-icons/react';
 import { FillPicker, FillMode } from '../controls/FillPicker';
-import { ColorField } from '../controls/ColorField';
 import { cn } from '@/lib/utils';
 
 interface Props {
   el: Element;
   get: (prop: string) => string;
   getOrig: (prop: string) => string | undefined;
-  set: (prop: string, val: string, desc: string) => void;
+  set: (prop: string, val: string, desc: string, promptVal?: string) => void;
 }
-
-const TEXT_TAGS = new Set(['P','SPAN','H1','H2','H3','H4','H5','H6','A','BUTTON','LABEL','LI']);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,7 +33,8 @@ function colorToHex(color: string): string {
 }
 
 function extractOpacity(color: string): number {
-  const m = color.match(/rgba?\([^)]+,\s*([\d.]+)\)/);
+  // Only match rgba — rgb() has no alpha; matching it captures the blue channel as alpha
+  const m = color.match(/rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)/);
   if (m) return Math.round(parseFloat(m[1]) * 100);
   return 100;
 }
@@ -46,6 +44,131 @@ function detectMode(bgImage: string): FillMode {
   if (bgImage.includes('linear-gradient') || bgImage.includes('radial-gradient')) return 'gradient';
   if (bgImage.startsWith('url(')) return 'image';
   return 'solid';
+}
+
+// Extract the URL from a CSS url("...") value
+function extractCssUrl(val: string): string {
+  const m = val.match(/url\(["']?([^"')]+)["']?\)/);
+  return m ? m[1] : '';
+}
+
+// ── <img> source editor ───────────────────────────────────────────────────────
+
+const OBJECT_FIT_OPTIONS = ['cover', 'contain', 'fill', 'none', 'scale-down'] as const;
+
+function ImgSourceEditor({ el, get, getOrig, set }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [urlDraft, setUrlDraft] = useState('');
+
+  const imgEl = el as HTMLImageElement;
+
+  // content: url(...) CSS override is what we apply; fall back to the element's own src
+  const contentVal = get('content');
+  const hasOverride = contentVal && contentVal !== 'normal' && contentVal !== 'none' && contentVal.startsWith('url(');
+  const previewSrc  = hasOverride ? extractCssUrl(contentVal) : (imgEl.currentSrc || imgEl.src || '');
+
+  const objectFit    = get('object-fit') || 'fill';
+  const isChanged    = getOrig('content') !== undefined;
+  const fitChanged   = getOrig('object-fit') !== undefined;
+
+  function applyNewSrc(src: string, filename?: string) {
+    // Chrome supports `content: url(...)` on <img> to visually replace the source
+    // via the constructable stylesheet, keeping the same change-tracking path as all other edits.
+    // Pass filename as promptVal so the prompt shows the file name instead of a base64 blob.
+    const promptVal = filename ? `url("${filename}")` : undefined;
+    set('content', `url("${src}")`, `Replace image: ${filename ?? 'from URL'}`, promptVal);
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => applyNewSrc(ev.target?.result as string, file.name);
+    reader.readAsDataURL(file);
+    // Reset so the same file can be re-uploaded
+    e.target.value = '';
+  }
+
+  function handleUrlCommit() {
+    const trimmed = urlDraft.trim();
+    if (trimmed) { applyNewSrc(trimmed); setUrlDraft(''); }
+  }
+
+  return (
+    <div className="space-y-2">
+
+      {/* Thumbnail preview */}
+      <div
+        className="w-full rounded-md border border-panel-border overflow-hidden"
+        style={{
+          height: 72,
+          background: 'conic-gradient(#555 90deg,#444 90deg 180deg,#555 180deg 270deg,#444 270deg) 0 0/10px 10px',
+        }}
+      >
+        {previewSrc && (
+          <img
+            src={previewSrc}
+            alt=""
+            className="w-full h-full"
+            style={{ objectFit: objectFit as React.CSSProperties['objectFit'] }}
+          />
+        )}
+      </div>
+
+      {/* Upload from computer */}
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+      <button
+        onClick={() => fileRef.current?.click()}
+        className={cn(
+          'w-full h-[26px] rounded-md border text-[11px] transition-colors',
+          isChanged
+            ? 'border-panel-blue bg-panel-changed-bg text-panel-blue'
+            : 'border-panel-border bg-panel-input-bg text-panel-text-primary hover:bg-panel-row-hover',
+        )}
+      >
+        {isChanged ? 'Replace image' : 'Upload from computer'}
+      </button>
+
+      {/* URL input */}
+      <div className={cn(
+        'flex items-center h-[22px] px-1.5 rounded-md border gap-1.5 bg-panel-input-bg',
+        'border-panel-border focus-within:border-panel-blue',
+      )}>
+        <span className="text-[10px] text-panel-text-label select-none shrink-0">URL</span>
+        <input
+          type="text"
+          value={urlDraft}
+          placeholder="https://…"
+          onChange={e => setUrlDraft(e.target.value)}
+          onBlur={handleUrlCommit}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          className="flex-1 min-w-0 bg-transparent text-[11px] text-panel-text-primary focus:outline-none placeholder:text-panel-text-label"
+        />
+      </div>
+
+      {/* Object-fit */}
+      <div className="relative h-[22px] rounded-md border bg-panel-input-bg"
+        style={{ borderColor: fitChanged ? 'var(--panel-blue)' : undefined }}
+      >
+        <select
+          value={objectFit}
+          onChange={e => set('object-fit', e.target.value, 'Change object fit')}
+          style={{ appearance: 'none', WebkitAppearance: 'none' }}
+          className="absolute inset-0 w-full h-full pl-1.5 pr-5 bg-transparent text-[11px] text-panel-text-primary focus:outline-none cursor-pointer"
+        >
+          {OBJECT_FIT_OPTIONS.map(v => (
+            <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1).replace('-', ' ')}</option>
+          ))}
+        </select>
+        <div className="absolute right-0 top-0 h-full flex items-center pr-1.5 pointer-events-none">
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-panel-text-label">
+            <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+    </div>
+  );
 }
 
 // ── Fill swatch row ───────────────────────────────────────────────────────────
@@ -83,7 +206,6 @@ function FillRow({ mode, bgColor, bgImage, isChanged, onSwatchClick }: FillRowPr
         'flex items-center gap-1.5 flex-1 h-[22px] px-1.5 rounded-md border bg-panel-input-bg',
         isChanged ? 'border-panel-blue' : 'border-panel-border',
       )}>
-        {/* Swatch — opens FillPicker */}
         <button
           onClick={onSwatchClick}
           className="shrink-0 rounded-sm border border-black/20 outline-none focus:ring-1 focus:ring-panel-blue"
@@ -117,10 +239,17 @@ function FillRow({ mode, bgColor, bgImage, isChanged, onSwatchClick }: FillRowPr
 export function FillSection({ el, get, getOrig, set }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const isTextEl = TEXT_TAGS.has(el.tagName) || (el.childElementCount === 0 && (el.textContent?.trim().length ?? 0) > 0);
+  // <img> elements: use content: url(...) override instead of background-image
+  if (el.tagName === 'IMG') {
+    return (
+      <div className="px-3 pb-3 pt-1">
+        <ImgSourceEditor el={el} get={get} getOrig={getOrig} set={set} />
+      </div>
+    );
+  }
+
   const bgColor = get('background-color');
   const bgImage = get('background-image');
-  const color   = get('color');
 
   const mode = detectMode(bgImage);
   const isChanged =
@@ -147,7 +276,6 @@ export function FillSection({ el, get, getOrig, set }: Props) {
 
   return (
     <div className="px-3 pb-3 pt-1 space-y-1">
-      {/* Background fill */}
       <FillRow
         mode={mode}
         bgColor={bgColor}
@@ -156,7 +284,6 @@ export function FillSection({ el, get, getOrig, set }: Props) {
         onSwatchClick={() => setPickerOpen(o => !o)}
       />
 
-      {/* Inline FillPicker */}
       {pickerOpen && (
         <div className="mt-1">
           <FillPicker
@@ -170,15 +297,6 @@ export function FillSection({ el, get, getOrig, set }: Props) {
             onClose={() => setPickerOpen(false)}
           />
         </div>
-      )}
-
-      {/* Text color */}
-      {isTextEl && (
-        <ColorField
-          value={color}
-          original={getOrig('color')}
-          onChange={v => set('color', v, 'Change text color')}
-        />
       )}
     </div>
   );

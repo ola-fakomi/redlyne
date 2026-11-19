@@ -20,7 +20,7 @@ pnpm build
 
 # 3. Load in Chrome
 # Open chrome://extensions, enable Developer mode, click Load unpacked,
-# select the .output/chrome-mv3 folder.
+# select the output/chrome-mv3 folder.
 
 # 4. Run the fixture app (a React + Vite + Tailwind demo page)
 cd fixtures/react-vite-tailwind
