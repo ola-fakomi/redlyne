@@ -7,6 +7,27 @@ Redlyne uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.0.3] — 2026-11-19
+
+### Added
+
+- **Code tab** — a third tab (Design · Code · Changes) that surfaces computed CSS properties not covered by the Design UI: float, aspect-ratio, flex child properties (grow, shrink, basis, order), grid layout, white-space, word-break, overflow-wrap, text-overflow, vertical-align, cursor, pointer-events, visibility, clip-path, object-fit, transitions, animations, will-change, resize, user-select, list-style, and more. Shows "Modified only" by default (non-default values highlighted in blue); a "Show all" toggle expands every property. All fields are editable inline — changes apply live and are tracked.
+- **Position section overhaul** — the Position section now exposes a CSS position type dropdown (static / relative / absolute / fixed / sticky), T/R/B/L offset fields (shown only when the element is out of flow), and a z-index field, all editable.
+- **Position badge** — when an element is `position: absolute`, `fixed`, or `sticky`, a coloured chip appears on the element label row (amber / red / purple). Makes it impossible to accidentally break a positioned layout without noticing.
+- **Pseudo-element scrim support** — detects `::before` and `::after` pseudo-elements with a visible background and exposes an inline colour picker under the Fill section. Changes are written as `[data-redlyne-id]::before { background-color: … !important }` and tracked in the prompt as `::before:background-color`.
+- **Image filename in prompt** — when replacing an `<img>` source from a local file upload, the prompt now records `url("filename.ext")` instead of a truncated base64 blob.
+- **Margin editing** in both the Layout (block) and Auto layout (flex) sections — four editable T/R/B/L fields alongside padding.
+- **Flow buttons** in the Layout section — clicking a direction also sets `display: flex` on plain divs in one click.
+
+### Fixed
+
+- `position`, `top`, `right`, `bottom`, `left`, and `z-index` promoted from the Code tab into the Design tab Position section.
+- Stroke side-select dropdown now correctly responds to clicks inside the shadow DOM (composedPath fix).
+- Setting a single stroke side (Top/Right/Bottom/Left) zeros all other sides; Custom keeps them independent.
+- Fill section no longer shows a duplicate text-colour row.
+- Opacity no longer shows 25500% — fixed regex for `rgba()` vs `rgb()` in FillSection and ColorField.
+- Stroke reads switched from shorthand (`border-width`) to longhands (`border-top-width` etc.) — Chrome does not return shorthand computed values.
+
 ## [0.0.2] — 2026-11-12
 
 ### Added
