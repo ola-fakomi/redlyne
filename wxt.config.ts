@@ -4,8 +4,8 @@ export default defineConfig({
   extensionApi: 'chrome',
   manifest: {
     name: 'Redlyne',
-    description: 'Figma-style live editor — select an element, edit it, copy the diff to Claude Code.',
-    version: '0.0.3',
+    description: 'Edit any web page with Figma-style controls, then copy every change as one prompt for Claude Code or Codex.',
+    version: '0.0.4',
     // Note: the `key` field is intentionally omitted here — CWS rejects uploads containing it.
     // For local developer installs with a stable ID, add the key back manually or use a separate config.
     permissions: ['clipboardWrite', 'storage', 'activeTab'],
