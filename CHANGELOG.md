@@ -7,12 +7,6 @@ Redlyne uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.0.4] — 2026-11-19
-
-### Changed
-
-- **Store description** updated to: "Edit any web page with Figma-style controls, then copy every change as one prompt for Claude Code or Codex." (107 characters, within the 132-character Chrome Web Store limit).
-
 ## [0.0.3] — 2026-11-19
 
 ### Added
@@ -24,6 +18,7 @@ Redlyne uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Image filename in prompt** — when replacing an `<img>` source from a local file upload, the prompt now records `url("filename.ext")` instead of a truncated base64 blob.
 - **Margin editing** in both the Layout (block) and Auto layout (flex) sections — four editable T/R/B/L fields alongside padding.
 - **Flow buttons** in the Layout section — clicking a direction also sets `display: flex` on plain divs in one click.
+- **Store description** set to: "Edit any web page with Figma-style controls, then copy every change as one prompt for Claude Code or Codex." (107 chars).
 
 ### Fixed
 
